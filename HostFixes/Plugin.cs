@@ -16,6 +16,8 @@ namespace HostFixes
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
+
+        private static Dictionary<ulong, int> VotedToLeaveEarlyPlayers = [];
         private void Awake()
         {
             // Plugin startup logic
@@ -23,25 +25,6 @@ namespace HostFixes
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
             Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(Terminal), nameof(Terminal.BuyItemsServerRpc))]
-        class BuyItemsServerRpc_Patch
-        {
-
-            public static bool Prefix(Terminal __instance, int newGroupCredits)
-            {
-                if (newGroupCredits > __instance.groupCredits)
-                {
-                    Log.LogError($"Player attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {__instance.groupCredits}");
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
         }
 
         [HarmonyWrapSafe]
@@ -165,44 +148,56 @@ namespace HostFixes
             }
         }
 
-        private static readonly Dictionary<ulong, int> VotedToLeaveEarlyPlayers = [];
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(StartOfRound), "OpenShipDoors")]
+        class OpenShipDoors_Patch
+        {
+            public static void Prefix()
+            {
+                VotedToLeaveEarlyPlayers.Clear();
+            }
+        }
+
         public class MyServerRpcs
         {
+            public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                Terminal terminal = FindObjectOfType<Terminal>();
+                if (newGroupCredits < terminal.groupCredits)
+                {
+                    terminal.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                }
+                else
+                {
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {terminal.groupCredits}");
+                }
+            }
+
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (playerId == 99)
+                {
+                    return;
+                }    
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
                 {
-                    try
-                    {
-                        Log.LogError($"[AddPlayerChatMessageServerRpc] Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is out of range.");
-                        return;
-                    }
-                    catch
-                    {
-                        Log.LogError($"[AddPlayerChatMessageServerRpc] Client #{clientId} called  playerId ({playerId} is out of range");
-                        return;
-                    }
-
-
+                    Log.LogError($"[AddPlayerChatMessageServerRpc] Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is out of range.");
+                    return;
                 }
 
-                if (clientId == StartOfRound.Instance.allPlayerScripts[playerId].actualClientId)
+                if (playerId == realPlayerId)
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageClientRpc", [chatMessage, playerId]).GetValue();
+
+                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
                 }
                 else
                 {
-                    try
-                    {
-                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
-                    }
-                    catch
-                    {
-                        Log.LogError($"Player #{clientId} tried to send message as another player: {chatMessage}");
-                    }
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
                 }
             }
 
@@ -226,15 +221,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    try
-                    {
-                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
-                    }
-                    catch
-                    {
-                        Log.LogError($"Player #{clientId} tried to force the vote to leave.");
-                    }
-
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
                 }
             }
 
@@ -244,13 +231,67 @@ namespace HostFixes
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
                 if (clientId == 0)
                 {
-                    Traverse.Create(RoundManager.Instance).Method("DespawnEnemyGameObject", [enemyNetworkObject]).GetValue();
+                    Log.LogInfo($"Despawn enemy {enemyNetworkObject}"); //TODO: Remove
+                    RoundManager.Instance.DespawnEnemyServerRpc(enemyNetworkObject);
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) despawned and enemy on the server: {enemyNetworkObject}");
-                    Traverse.Create(RoundManager.Instance).Method("DespawnEnemyGameObject", [enemyNetworkObject]).GetValue();
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attemped to despawn an enemy on the server: {enemyNetworkObject}");
                 }
+            }
+
+            public void EndGameServerRpc(int playerClientId, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (playerClientId == realPlayerId)
+                {
+                    if(StartOfRound.Instance.allPlayerScripts[playerClientId].isPlayerDead) //TODO: Add distance from lever check
+                    {
+                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game");
+                        return;
+                    }
+                    StartOfRound.Instance.EndGameServerRpc(playerClientId);
+
+                }
+                else
+                {
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
+                }
+            }
+        }
+
+        [HarmonyPatch]
+        class BuyItemsServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(RoundManager), "__rpc_handler_4003509079")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyItemsServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched BuyItemsServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.BuyItemsServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch BuyItemsServerRpc");
+                }
+
+                return codes.AsEnumerable();
             }
         }
 
@@ -350,6 +391,40 @@ namespace HostFixes
                 else
                 {
                     Log.LogError("Could not patch DespawnEnemyServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class EndGameServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_2028434619")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "EndGameServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched EndGameServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.EndGameServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch EndGameServerRpc");
                 }
 
                 return codes.AsEnumerable();
