@@ -141,10 +141,11 @@ namespace HostFixes
         [HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SetShipLeaveEarlyVotesText))]
         class SetShipLeaveEarlyVotesText_Patch
         {
-            public static void Prefix(HUDManager __instance)
+            public static bool Prefix(HUDManager __instance)
             {
                 int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
                 HUDManager.Instance.holdButtonToEndGameEarlyVotesText.text = $"({VotedToLeaveEarlyPlayers.Count}/{neededVotes} Votes)";
+                return false;
             }
         }
 
@@ -264,7 +265,7 @@ namespace HostFixes
         [HarmonyPatch]
         class BuyItemsServerRpc_Transpile
         {
-            [HarmonyPatch(typeof(RoundManager), "__rpc_handler_4003509079")]
+            [HarmonyPatch(typeof(Terminal), "__rpc_handler_4003509079")]
             [HarmonyTranspiler]
             public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
             {
