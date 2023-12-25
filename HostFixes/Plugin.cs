@@ -154,24 +154,13 @@ namespace HostFixes
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
         class OnPlayerDC_Patch
         {
-            public static void Postfix(int playerObjectNumber, ulong clientId)
+            public static void Postfix(ulong clientId)
             {
                 if(votedToLeaveEarlyPlayers.Contains(clientId))
                 {
                     votedToLeaveEarlyPlayers.Remove(clientId);
+                    TimeOfDay.Instance.votesForShipToLeaveEarly = votedToLeaveEarlyPlayers.Count;
                 }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SetShipLeaveEarlyVotesText))]
-        class SetShipLeaveEarlyVotesText_Patch
-        {
-            public static bool Prefix(HUDManager __instance)
-            {
-                int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
-                HUDManager.Instance.holdButtonToEndGameEarlyVotesText.text = $"({votedToLeaveEarlyPlayers.Count}/{neededVotes} Votes)";
-                return false;
             }
         }
 
@@ -272,11 +261,11 @@ namespace HostFixes
                     int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
                     if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, 2))
                     {
-                        votedToLeaveEarlyPlayers.Clear();
                         TimeOfDay.Instance.SetShipLeaveEarlyClientRpc(TimeOfDay.Instance.normalizedTimeOfDay + 0.1f, TimeOfDay.Instance.votesForShipToLeaveEarly);
                     }
                     else
                     {
+                        TimeOfDay.Instance.votesForShipToLeaveEarly++;
                         TimeOfDay.Instance.AddVoteForShipToLeaveEarlyClientRpc();
                     }
                 }
