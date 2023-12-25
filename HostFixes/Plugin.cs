@@ -106,11 +106,6 @@ namespace HostFixes
                     objectInPresent = null;
                 }
             }
-
-            public static void Postfix(GiftBoxItem __instance)
-            {
-                Traverse.Create(__instance).Field("objectInPresent").SetValue(null);
-            }
         }
 
         [HarmonyWrapSafe]
@@ -281,7 +276,6 @@ namespace HostFixes
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
                 if (clientId == 0)
                 {
-                    Log.LogInfo($"Despawn enemy {enemyNetworkObject}"); //TODO: Remove
                     RoundManager.Instance.DespawnEnemyServerRpc(enemyNetworkObject);
                 }
                 else
