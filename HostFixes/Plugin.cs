@@ -17,7 +17,10 @@ namespace HostFixes
     {
         internal static ManualLogSource Log;
 
-        private static Dictionary<ulong, int> VotedToLeaveEarlyPlayers = [];
+        private static List<ulong> votedToLeaveEarlyPlayers = [];
+
+        private static GameObject lastObjectInGift;
+
         private void Awake()
         {
             // Plugin startup logic
@@ -89,17 +92,18 @@ namespace HostFixes
         [HarmonyPatch(typeof(GiftBoxItem), nameof(GiftBoxItem.OpenGiftBoxServerRpc))]
         class OpenGiftBoxServerRpc_Patch
         {
-            public static bool Prefix(GiftBoxItem __instance)
+            public static void Prefix(GiftBoxItem __instance)
             {
                 GameObject objectInPresent = Traverse.Create(__instance).Field("objectInPresent").GetValue() as GameObject;
-                if (objectInPresent)
+                if (objectInPresent != lastObjectInGift)
                 {
-                    return true;
+                    Log.LogInfo($"Opened GiftBox.");
+                    lastObjectInGift = objectInPresent;
                 }
                 else
                 {
-                    Log.LogError($"Skipping extra OpenGiftBoxServerRpc calls.");
-                    return false;
+                    Log.LogError($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
+                    objectInPresent = null;
                 }
             }
 
@@ -121,7 +125,6 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player tried to place ship object outside the ship. {newPosition}");
                     return false;
                 }
             }
@@ -138,13 +141,36 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(PlayerControllerB), "NextItemSlot")]
+        class NextItemSlot_Patch
+        {
+            public static void Prefix(PlayerControllerB __instance)
+            {
+                Mathf.Clamp(__instance.currentItemSlot, 0, __instance.ItemSlots.Length - 1);
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
+        class OnPlayerDC_Patch
+        {
+            public static void Postfix(int playerObjectNumber, ulong clientId)
+            {
+                if(votedToLeaveEarlyPlayers.Contains(clientId))
+                {
+                    votedToLeaveEarlyPlayers.Remove(clientId);
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(HUDManager), nameof(HUDManager.SetShipLeaveEarlyVotesText))]
         class SetShipLeaveEarlyVotesText_Patch
         {
             public static bool Prefix(HUDManager __instance)
             {
                 int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
-                HUDManager.Instance.holdButtonToEndGameEarlyVotesText.text = $"({VotedToLeaveEarlyPlayers.Count}/{neededVotes} Votes)";
+                HUDManager.Instance.holdButtonToEndGameEarlyVotesText.text = $"({votedToLeaveEarlyPlayers.Count}/{neededVotes} Votes)";
                 return false;
             }
         }
@@ -155,11 +181,45 @@ namespace HostFixes
         {
             public static void Prefix()
             {
-                VotedToLeaveEarlyPlayers.Clear();
+                votedToLeaveEarlyPlayers.Clear();
             }
         }
 
-        public class MyServerRpcs
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
+        class StartOfRound_StartGame_Patch
+        {
+            public static void Prefix()
+            {
+                QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
+                if (quickMenuManager != null)
+                {
+                    for (int i = 1; i < quickMenuManager.playerListSlots.Count(); i++)
+                    {
+                        quickMenuManager.playerListSlots[i].usernameHeader.alpha = 0.25f;
+                    }
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(StartMatchLever), nameof(StartMatchLever.StartGame))]
+        class StartMatchLever_StartGame_Patch
+        {
+            public static void Prefix()
+            {
+                QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
+                if (quickMenuManager != null)
+                {
+                    for (int i = 1; i < quickMenuManager.playerListSlots.Count(); i++)
+                    {
+                        quickMenuManager.playerListSlots[i].usernameHeader.alpha = 0.25f;
+                    }
+                }
+            }
+        }
+
+        public class HostFixesServerRpcs
         {
             public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, ServerRpcParams serverRpcParams)
             {
@@ -206,13 +266,13 @@ namespace HostFixes
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
-                if (!VotedToLeaveEarlyPlayers.ContainsKey(clientId) && StartOfRound.Instance.allPlayerScripts[realPlayerId].isPlayerDead)
+                if (!votedToLeaveEarlyPlayers.Contains(clientId) && StartOfRound.Instance.allPlayerScripts[realPlayerId].isPlayerDead)
                 {
-                    VotedToLeaveEarlyPlayers.Add(clientId, realPlayerId);
+                    votedToLeaveEarlyPlayers.Add(clientId);
                     int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
-                    if (VotedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, 2))
+                    if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, 2))
                     {
-                        VotedToLeaveEarlyPlayers.Clear();
+                        votedToLeaveEarlyPlayers.Clear();
                         TimeOfDay.Instance.SetShipLeaveEarlyClientRpc(TimeOfDay.Instance.normalizedTimeOfDay + 0.1f, TimeOfDay.Instance.votesForShipToLeaveEarly);
                     }
                     else
@@ -260,6 +320,31 @@ namespace HostFixes
                     Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
                 }
             }
+
+            public void PlayerLoadedServerRpc(ulong clientId, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+
+                if (senderClientId == 0)
+                {
+                    Traverse.Create(StartOfRound.Instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
+                    return;
+                }
+
+                if (clientId == senderClientId)
+                {
+                    Traverse.Create(StartOfRound.Instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
+                    QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
+                    if (quickMenuManager != null && StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                    {
+                        quickMenuManager.playerListSlots[realPlayerId].usernameHeader.alpha = 1f;
+                    }
+                }
+                else
+                {
+                    Log.LogError($"Client #{clientId} senderClientId #{senderClientId} tried to call the PlayerLoaded RPC for another client.");
+                }
+            }
         }
 
         [HarmonyPatch]
@@ -285,7 +370,7 @@ namespace HostFixes
                 {
                     Log.LogInfo("Patched BuyItemsServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.BuyItemsServerRpc));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
                 }
                 else
                 {
@@ -319,7 +404,7 @@ namespace HostFixes
                 {
                     Log.LogInfo("Patched AddPlayerChatMessageServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.AddPlayerChatMessageServerRpc));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AddPlayerChatMessageServerRpc));
                 }
                 else
                 {
@@ -353,7 +438,7 @@ namespace HostFixes
                 {
                     Log.LogInfo("Patched SetShipLeaveEarlyServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.SetShipLeaveEarlyServerRpc));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetShipLeaveEarlyServerRpc));
                 }
                 else
                 {
@@ -387,7 +472,7 @@ namespace HostFixes
                 {
                     Log.LogInfo("Patched DespawnEnemyServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.DespawnEnemyServerRpc));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DespawnEnemyServerRpc));
                 }
                 else
                 {
@@ -421,11 +506,45 @@ namespace HostFixes
                 {
                     Log.LogInfo("Patched EndGameServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(MyServerRpcs).GetMethod(nameof(MyServerRpcs.EndGameServerRpc));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.EndGameServerRpc));
                 }
                 else
                 {
                     Log.LogError("Could not patch EndGameServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class PlayerLoadedServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_4249638645")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "PlayerLoadedServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched PlayerLoadedServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlayerLoadedServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch PlayerLoadedServerRpc");
                 }
 
                 return codes.AsEnumerable();
