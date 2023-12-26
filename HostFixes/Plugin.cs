@@ -329,7 +329,11 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Client #{clientId} senderClientId #{senderClientId} tried to call the PlayerLoaded RPC for another client.");
+                    if (StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int realPlayerId))
+                    {
+                        Log.LogError($"Client #{clientId} senderClientId #{StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername} tried to call the PlayerLoaded RPC for another client.");
+                    }
+ 
                 }
             }
         }
