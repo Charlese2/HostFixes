@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
@@ -17,6 +18,8 @@ namespace HostFixes
     {
         internal static ManualLogSource Log;
 
+        private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
+
         private static List<ulong> votedToLeaveEarlyPlayers = [];
 
         private static GameObject lastObjectInGift;
@@ -25,9 +28,10 @@ namespace HostFixes
         {
             // Plugin startup logic
             Log = Logger;
+            configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
-            Log.LogInfo($"Plugin {PluginInfo.PLUGIN_GUID} is loaded!");
+            Log.LogInfo($"Plugin {PluginInfo.PLUGIN_NAME} is loaded!");
         }
 
         [HarmonyWrapSafe]
@@ -254,7 +258,7 @@ namespace HostFixes
                 {
                     votedToLeaveEarlyPlayers.Add(clientId);
                     int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
-                    if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, 2))
+                    if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, configMinimumVotesToLeaveEarly.Value))
                     {
                         TimeOfDay.Instance.SetShipLeaveEarlyClientRpc(TimeOfDay.Instance.normalizedTimeOfDay + 0.1f, TimeOfDay.Instance.votesForShipToLeaveEarly);
                     }
