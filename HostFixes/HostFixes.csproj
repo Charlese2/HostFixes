@@ -26,10 +26,10 @@
         <HintPath>..\Assembly-CSharp.dll</HintPath>
       </Reference>
       <Reference Include="Unity.Netcode.Runtime">
-        <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Runtime.dll</HintPath>
+        <HintPath>..\Unity.Netcode.Runtime.dll</HintPath>
       </Reference>
       <Reference Include="Unity.TextMeshPro">
-        <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+        <HintPath>..\Unity.TextMeshPro.dll</HintPath>
       </Reference>
     </ItemGroup>
 </Project>

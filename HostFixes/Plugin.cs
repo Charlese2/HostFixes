@@ -31,7 +31,7 @@ namespace HostFixes
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
-            Log.LogInfo($"Plugin {PluginInfo.PLUGIN_NAME} is loaded!");
+            Log.LogInfo($"{PluginInfo.PLUGIN_NAME} is loaded!");
         }
 
         [HarmonyWrapSafe]
