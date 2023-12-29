@@ -35,84 +35,6 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(Terminal), nameof(Terminal.SyncGroupCreditsServerRpc))]
-        class SyncGroupCreditsServerRpc_Patch
-        {
-            public static bool Prefix(Terminal __instance, int newGroupCredits)
-            {
-                Log.LogWarning($"__instance {__instance}");
-                if (newGroupCredits > __instance.groupCredits)
-                {
-                    Log.LogError($"Attempt to increase credits using Terminal Cheat Commands. Attempted Credit Value: {newGroupCredits} Old Credit Value: {__instance.groupCredits}");
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.BuyShipUnlockableServerRpc))]
-        class BuyShipUnlockableServerRpc_Patch
-        {
-            public static bool Prefix(int newGroupCreditsAmount)
-            {
-                Terminal TerminalInstance = FindObjectOfType<Terminal>();
-                if (newGroupCreditsAmount > TerminalInstance.groupCredits)
-                {
-                    Log.LogError($"Attempt to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {TerminalInstance.groupCredits}");
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.ChangeLevelServerRpc))]
-        class ChangeLevelServerRpc_Patch
-        {
-            public static bool Prefix(int newGroupCreditsAmount)
-            {
-                Terminal TerminalInstance = FindObjectOfType<Terminal>();
-                ;
-                if (newGroupCreditsAmount > TerminalInstance.groupCredits)
-                {
-                    Log.LogError($"Attempt to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {TerminalInstance.groupCredits}");
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(GiftBoxItem), nameof(GiftBoxItem.OpenGiftBoxServerRpc))]
-        class OpenGiftBoxServerRpc_Patch
-        {
-            public static void Prefix(GiftBoxItem __instance)
-            {
-                GameObject objectInPresent = Traverse.Create(__instance).Field("objectInPresent").GetValue() as GameObject;
-                if (objectInPresent != lastObjectInGift)
-                {
-                    Log.LogInfo($"Opened GiftBox.");
-                    lastObjectInGift = objectInPresent;
-                }
-                else
-                {
-                    Log.LogError($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
-                    objectInPresent = null;
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(ShipBuildModeManager), nameof(ShipBuildModeManager.PlaceShipObjectServerRpc))]
         class PlaceShipObjectServerRpc_Patch
         {
@@ -209,18 +131,62 @@ namespace HostFixes
 
         public class HostFixesServerRpcs
         {
-            public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, ServerRpcParams serverRpcParams)
+            public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+
+                if (newGroupCredits < instance.groupCredits)
+                {
+                    instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                }
+                else
+                {
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                }
+            }
+            
+            public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (newGroupCredits < instance.groupCredits)
+                {
+                    instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
+                }
+                else
+                {
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                }
+            }
+
+            public void BuyShipUnlockableServerRpc(int unlockableID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
                 Terminal terminal = FindObjectOfType<Terminal>();
-                if (newGroupCredits < terminal.groupCredits)
+                if (newGroupCreditsAmount < terminal.groupCredits)
                 {
-                    terminal.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                    StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {terminal.groupCredits}");
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                }
+            }
+            
+            public void ChangeLevelServerRpc(int levelID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                Terminal terminal = FindObjectOfType<Terminal>();
+                if (newGroupCreditsAmount < terminal.groupCredits)
+                {
+                    StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
+                }
+                else
+                {
+                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                 }
             }
 
@@ -336,6 +302,20 @@ namespace HostFixes
  
                 }
             }
+
+            public void OpenGiftBoxServerRpc(GiftBoxItem instance, ServerRpcParams serverRpcParams)
+            {
+                GameObject objectInPresent = Traverse.Create(instance).Field("objectInPresent").GetValue() as GameObject;
+                if (objectInPresent != lastObjectInGift)
+                {
+                    lastObjectInGift = objectInPresent;
+                    instance.OpenGiftBoxServerRpc();
+                }
+                else
+                {
+                    Log.LogError($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
+                }
+            }
         }
 
         [HarmonyPatch]
@@ -360,12 +340,116 @@ namespace HostFixes
                 if (found)
                 {
                     Log.LogInfo("Patched BuyItemsServerRpc");
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
                 }
                 else
                 {
                     Log.LogError("Could not patch BuyItemsServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class SyncGroupCreditsServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(Terminal), "__rpc_handler_3085407145")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SyncGroupCreditsServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched SyncGroupCreditsServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncGroupCreditsServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch SyncGroupCreditsServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class BuyShipUnlockableServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_3953483456")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyShipUnlockableServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched BuyShipUnlockableServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyShipUnlockableServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch BuyShipUnlockableServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class ChangeLevelServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_1134466287")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "ChangeLevelServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched ChangeLevelServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeLevelServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch ChangeLevelServerRpc");
                 }
 
                 return codes.AsEnumerable();
@@ -536,6 +620,41 @@ namespace HostFixes
                 else
                 {
                     Log.LogError("Could not patch PlayerLoadedServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class OpenGiftBoxServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(GiftBoxItem), "__rpc_handler_2878544999")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "OpenGiftBoxServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched OpenGiftBoxServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.OpenGiftBoxServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch OpenGiftBoxServerRpc");
                 }
 
                 return codes.AsEnumerable();
