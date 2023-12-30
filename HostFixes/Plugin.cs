@@ -275,6 +275,34 @@ namespace HostFixes
                     Log.LogError($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
                 }
             }
+
+            public void SendNewPlayerValuesServerRpc(ulong newPlayerSteamId, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (instance.actualClientId == clientId)
+                {
+                    Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
+                }
+                else
+                {
+                    Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to ");
+                }
+            }
+
+            public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (playerWhoHit == realPlayerId)
+                {
+                    instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
+                }
+                else
+                {
+                    Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from another player.");
+                }
+            }
         }
 
         [HarmonyPatch]
@@ -614,6 +642,76 @@ namespace HostFixes
                 else
                 {
                     Log.LogError("Could not patch OpenGiftBoxServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class SendNewPlayerValuesServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_2504133785")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SendNewPlayerValuesServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched SendNewPlayerValuesServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SendNewPlayerValuesServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch SendNewPlayerValuesServerRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
+        [HarmonyPatch]
+        class DamagePlayerFromOtherClientServerRpc_Transpile
+        {
+            [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_638895557")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DamagePlayerFromOtherClientServerRpc")
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found)
+                {
+                    Log.LogInfo("Patched DamagePlayerFromOtherClientServerRpc");
+                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DamagePlayerFromOtherClientServerRpc));
+                }
+                else
+                {
+                    Log.LogError("Could not patch DamagePlayerFromOtherClientServerRpc");
                 }
 
                 return codes.AsEnumerable();
