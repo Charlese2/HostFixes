@@ -223,11 +223,12 @@ namespace HostFixes
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[playerClientId];
                 if (playerClientId == realPlayerId)
                 {
-                    if(StartOfRound.Instance.allPlayerScripts[playerClientId].isPlayerDead) //TODO: Add distance from lever check
+                    if(player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
                     {
-                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game");
+                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
                         return;
                     }
                     StartOfRound.Instance.EndGameServerRpc(playerClientId);
