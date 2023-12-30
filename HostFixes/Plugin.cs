@@ -57,7 +57,7 @@ namespace HostFixes
         {
             public static void Prefix(PlayerControllerB __instance, ref int slot)
             {
-                Mathf.Clamp(slot, 0, __instance.ItemSlots.Length - 1);
+                slot = Mathf.Clamp(slot, 0, __instance.ItemSlots.Length - 1);
             }
         }
 
@@ -67,7 +67,7 @@ namespace HostFixes
         {
             public static void Prefix(PlayerControllerB __instance)
             {
-                Mathf.Clamp(__instance.currentItemSlot, 0, __instance.ItemSlots.Length - 1);
+                __instance.currentItemSlot = Mathf.Clamp(__instance.currentItemSlot, 0, __instance.ItemSlots.Length - 1);
             }
         }
 
