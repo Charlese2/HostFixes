@@ -173,7 +173,6 @@ namespace HostFixes
 
                 if (playerId == realPlayerId)
                 {
-
                     Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
                 }
                 else
@@ -258,9 +257,8 @@ namespace HostFixes
                 {
                     if (StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int realPlayerId))
                     {
-                        Log.LogError($"Client #{clientId} senderClientId #{StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername} tried to call the PlayerLoaded RPC for another client.");
+                        Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
                     }
- 
                 }
             }
 
