@@ -95,40 +95,6 @@ namespace HostFixes
             }
         }
 
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
-        class StartOfRound_StartGame_Patch
-        {
-            public static void Prefix()
-            {
-                QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
-                if (quickMenuManager != null)
-                {
-                    for (int i = 1; i < quickMenuManager.playerListSlots.Count(); i++)
-                    {
-                        quickMenuManager.playerListSlots[i].usernameHeader.alpha = 0.25f;
-                    }
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartMatchLever), nameof(StartMatchLever.StartGame))]
-        class StartMatchLever_StartGame_Patch
-        {
-            public static void Prefix()
-            {
-                QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
-                if (quickMenuManager != null)
-                {
-                    for (int i = 1; i < quickMenuManager.playerListSlots.Count(); i++)
-                    {
-                        quickMenuManager.playerListSlots[i].usernameHeader.alpha = 0.25f;
-                    }
-                }
-            }
-        }
-
         public class HostFixesServerRpcs
         {
             public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
@@ -287,11 +253,6 @@ namespace HostFixes
                 if (clientId == senderClientId)
                 {
                     Traverse.Create(StartOfRound.Instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
-                    QuickMenuManager quickMenuManager = FindObjectOfType<QuickMenuManager>();
-                    if (quickMenuManager != null && StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
-                    {
-                        quickMenuManager.playerListSlots[realPlayerId].usernameHeader.alpha = 1f;
-                    }
                 }
                 else
                 {
