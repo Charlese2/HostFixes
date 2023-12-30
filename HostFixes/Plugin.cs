@@ -150,7 +150,7 @@ namespace HostFixes
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
-                if (newGroupCredits < instance.groupCredits)
+                if (newGroupCredits <= instance.groupCredits)
                 {
                     instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
                 }
@@ -180,7 +180,7 @@ namespace HostFixes
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
                 Terminal terminal = FindObjectOfType<Terminal>();
-                if (newGroupCreditsAmount < terminal.groupCredits)
+                if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
                     StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
                 }
