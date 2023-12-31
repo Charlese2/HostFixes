@@ -267,7 +267,12 @@ namespace HostFixes
             public void OpenGiftBoxServerRpc(GiftBoxItem instance, ServerRpcParams serverRpcParams)
             {
                 GameObject objectInPresent = Traverse.Create(instance).Field("objectInPresent").GetValue() as GameObject;
-                if (objectInPresent != lastObjectInGift)
+                if (objectInPresent == null)
+                {
+                    instance.OpenGiftBoxServerRpc(); //Let the client clean up bugged giftbox.
+                    return;
+                }
+                if (objectInPresent != lastObjectInGift || lastObjectInGift == null)
                 {
                     lastObjectInGift = objectInPresent;
                     instance.OpenGiftBoxServerRpc();
