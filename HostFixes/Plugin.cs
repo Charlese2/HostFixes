@@ -31,7 +31,7 @@ namespace HostFixes
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
-            Log.LogInfo($"{PluginInfo.PLUGIN_NAME} is loaded!");
+            Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
         }
 
         [HarmonyWrapSafe]
@@ -108,7 +108,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
                 }
             }
             
@@ -122,7 +122,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
                 }
             }
 
@@ -137,7 +137,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                 }
             }
             
@@ -152,7 +152,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                 }
             }
 
@@ -167,7 +167,7 @@ namespace HostFixes
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
                 {
-                    Log.LogError($"[AddPlayerChatMessageServerRpc] Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is out of range.");
+                    Log.LogWarning($"[AddPlayerChatMessageServerRpc] Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is out of range.");
                     return;
                 }
 
@@ -177,7 +177,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
                 }
             }
 
@@ -202,7 +202,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
                 }
             }
 
@@ -216,7 +216,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attemped to despawn an enemy on the server: {enemyNetworkObject}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attemped to despawn an enemy on the server: {enemyNetworkObject}");
                 }
             }
 
@@ -229,7 +229,7 @@ namespace HostFixes
                 {
                     if(player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
                     {
-                        Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
+                        Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
                         return;
                     }
                     StartOfRound.Instance.EndGameServerRpc(playerClientId);
@@ -237,7 +237,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
                 }
             }
 
@@ -259,7 +259,7 @@ namespace HostFixes
                 {
                     if (StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int realPlayerId))
                     {
-                        Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
+                        Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
                     }
                 }
             }
@@ -279,7 +279,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
+                    Log.LogWarning($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
                 }
             }
 
@@ -293,7 +293,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to ");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to ");
                 }
             }
 
@@ -307,7 +307,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from another player.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from another player.");
                 }
             }
         }
