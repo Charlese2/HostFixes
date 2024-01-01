@@ -153,7 +153,7 @@ namespace HostFixes
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
                 Terminal terminal = FindObjectOfType<Terminal>();
-                if (newGroupCreditsAmount < terminal.groupCredits)
+                if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                 }
