@@ -35,6 +35,28 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(HUDManager), "AddPlayerChatMessageClientRpc")]
+        class AddPlayerChatMessageClientRpc_Patch
+        {
+            public static bool Prefix(HUDManager __instance, int playerId)
+            {
+                NetworkManager networkManager = __instance.NetworkManager;
+                if (networkManager == null || !networkManager.IsListening)
+                {
+                    return false;
+                }
+                if (!networkManager.IsHost)
+                {
+                    if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(ShipBuildModeManager), nameof(ShipBuildModeManager.PlaceShipObjectServerRpc))]
         class PlaceShipObjectServerRpc_Patch
         {
@@ -160,14 +182,15 @@ namespace HostFixes
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
-                if (playerId == 99)
+                if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{realPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
+                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
                     return;
-                }    
+                }
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
                 {
-                    Log.LogWarning($"[AddPlayerChatMessageServerRpc] Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is out of range.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is not a valid player: ");
                     return;
                 }
 
@@ -177,7 +200,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
                 }
             }
 
@@ -202,7 +225,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force the vote to leave.");
                 }
             }
 
@@ -216,7 +239,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attemped to despawn an enemy on the server: {enemyNetworkObject}");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attemped to despawn an enemy on the server: {enemyNetworkObject}");
                 }
             }
 
@@ -229,7 +252,7 @@ namespace HostFixes
                 {
                     if(player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
                     {
-                        Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
+                        Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
                         return;
                     }
                     StartOfRound.Instance.EndGameServerRpc(playerClientId);
@@ -237,7 +260,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to end the game while spoofing another player.");
                 }
             }
 
@@ -293,7 +316,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to ");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call SendNewPlayerValuesServerRpc on another player.");
                 }
             }
 
@@ -307,7 +330,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from another player.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from player # {playerWhoHit} on {instance.playerUsername}.");
                 }
             }
         }
