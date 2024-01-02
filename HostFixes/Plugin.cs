@@ -356,7 +356,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched BuyItemsServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                     codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
@@ -391,7 +390,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched SyncGroupCreditsServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                     codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncGroupCreditsServerRpc));
@@ -426,7 +424,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched BuyShipUnlockableServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyShipUnlockableServerRpc));
                 }
@@ -460,7 +457,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched ChangeLevelServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeLevelServerRpc));
                 }
@@ -494,7 +490,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched AddPlayerChatMessageServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AddPlayerChatMessageServerRpc));
                 }
@@ -528,7 +523,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched SetShipLeaveEarlyServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetShipLeaveEarlyServerRpc));
                 }
@@ -562,7 +556,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched DespawnEnemyServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DespawnEnemyServerRpc));
                 }
@@ -596,7 +589,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched EndGameServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.EndGameServerRpc));
                 }
@@ -630,7 +622,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched PlayerLoadedServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlayerLoadedServerRpc));
                 }
@@ -664,7 +655,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched OpenGiftBoxServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                     codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.OpenGiftBoxServerRpc));
@@ -699,7 +689,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched SendNewPlayerValuesServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                     codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SendNewPlayerValuesServerRpc));
@@ -734,7 +723,6 @@ namespace HostFixes
                 }
                 if (found)
                 {
-                    Log.LogInfo("Patched DamagePlayerFromOtherClientServerRpc");
                     codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                     codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                     codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DamagePlayerFromOtherClientServerRpc));
