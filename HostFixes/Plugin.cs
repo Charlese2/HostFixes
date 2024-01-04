@@ -122,7 +122,11 @@ namespace HostFixes
             public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
 
                 if (newGroupCredits < instance.groupCredits)
                 {
@@ -137,7 +141,11 @@ namespace HostFixes
             public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (newGroupCredits <= instance.groupCredits)
                 {
                     instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
@@ -151,7 +159,11 @@ namespace HostFixes
             public void BuyShipUnlockableServerRpc(int unlockableID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 Terminal terminal = FindObjectOfType<Terminal>();
                 if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
@@ -166,7 +178,11 @@ namespace HostFixes
             public void ChangeLevelServerRpc(int levelID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 Terminal terminal = FindObjectOfType<Terminal>();
                 if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
@@ -181,7 +197,11 @@ namespace HostFixes
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{realPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
@@ -207,7 +227,11 @@ namespace HostFixes
             public void SetShipLeaveEarlyServerRpc(ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (!votedToLeaveEarlyPlayers.Contains(clientId) && StartOfRound.Instance.allPlayerScripts[realPlayerId].isPlayerDead)
                 {
                     votedToLeaveEarlyPlayers.Add(clientId);
@@ -232,7 +256,11 @@ namespace HostFixes
             public void DespawnEnemyServerRpc(NetworkObjectReference enemyNetworkObject, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (clientId == 0)
                 {
                     RoundManager.Instance.DespawnEnemyServerRpc(enemyNetworkObject);
@@ -246,7 +274,11 @@ namespace HostFixes
             public void EndGameServerRpc(int playerClientId, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[playerClientId];
                 if (playerClientId == realPlayerId)
                 {
@@ -309,7 +341,11 @@ namespace HostFixes
             public void SendNewPlayerValuesServerRpc(ulong newPlayerSteamId, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (instance.actualClientId == clientId)
                 {
                     Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
@@ -323,7 +359,11 @@ namespace HostFixes
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                int realPlayerId = StartOfRound.Instance.ClientPlayerList.GetValueSafe(clientId);
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
                 if (playerWhoHit == realPlayerId)
                 {
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
