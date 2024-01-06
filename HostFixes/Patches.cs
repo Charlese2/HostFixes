@@ -58,6 +58,7 @@ namespace HostFixes
                 {
                     return false;
                 }
+
                 if (!networkManager.IsHost)
                 {
                     if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())

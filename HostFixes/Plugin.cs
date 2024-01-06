@@ -67,6 +67,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes[Location].operand = AccessTools.Field(typeof(ConnectionInfo), "identity"); //Replace mistaken `address` in Identity Getter
@@ -139,6 +140,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 if (newGroupCredits <= instance.groupCredits)
                 {
                     instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
@@ -158,6 +160,7 @@ namespace HostFixes
                     return;
                 }
                 Terminal terminal = FindObjectOfType<Terminal>();
+
                 if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
@@ -176,6 +179,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 Terminal terminal = FindObjectOfType<Terminal>();
                 if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
@@ -196,11 +200,13 @@ namespace HostFixes
                 {
                     return;
                 }
+
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
                 {
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 string username = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername;
                 if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{realPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
@@ -213,6 +219,7 @@ namespace HostFixes
                     Log.LogWarning($"Client #{clientId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player.");
                     return;
                 }
+
                 try
                 {
                     sanitizedChatMessage = Regex.Replace(chatMessage, "[<>\\\\][nt]?", ""); //Regex equates to [<>\\][nt]?
@@ -228,6 +235,7 @@ namespace HostFixes
                     Log.LogWarning($"Client #{clientId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
                     return;
                 }
+
                 if (playerId == realPlayerId)
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [sanitizedChatMessage, playerId]).GetValue();
@@ -288,6 +296,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 if (!votedToLeaveEarlyPlayers.Contains(clientId) && StartOfRound.Instance.allPlayerScripts[realPlayerId].isPlayerDead)
                 {
                     votedToLeaveEarlyPlayers.Add(clientId);
@@ -317,6 +326,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 if (clientId == 0)
                 {
                     RoundManager.Instance.DespawnEnemyServerRpc(enemyNetworkObject);
@@ -335,6 +345,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[playerClientId];
                 if (playerClientId == realPlayerId)
                 {
@@ -383,6 +394,7 @@ namespace HostFixes
                     instance.OpenGiftBoxServerRpc(); //Let the client clean up bugged giftbox.
                     return;
                 }
+
                 if (objectInPresent != lastObjectInGift || lastObjectInGift == null)
                 {
                     lastObjectInGift = objectInPresent;
@@ -402,6 +414,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 if (instance.actualClientId == clientId)
                 {
                     Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
@@ -424,6 +437,7 @@ namespace HostFixes
                 {
                     Log.LogWarning($"Client #{clientId} {StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername} tried to pvp inside the ship.");
                 }
+
                 if (playerWhoHit == SenderPlayerId)
                 {
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
@@ -446,6 +460,7 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
                 if (configLogSignalTranslatorMessages.Value)
                 {
                     Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) sent signal translator message: ({signalMessage})");
@@ -475,6 +490,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
@@ -509,6 +525,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
@@ -543,6 +560,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -576,6 +594,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -609,6 +628,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -642,6 +662,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -675,6 +696,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -708,6 +730,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -741,6 +764,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -774,6 +798,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
@@ -807,6 +832,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
@@ -841,6 +867,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
@@ -875,6 +902,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
@@ -909,6 +937,7 @@ namespace HostFixes
                             break;
                         }
                     }
+
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
