@@ -62,7 +62,7 @@ namespace HostFixes
 
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Ldfld)
+                        if (codes[i].opcode == OpCodes.Ldfld && (codes[i].operand as FieldInfo)?.FieldType == typeof(NetAddress))
                         {
                             Location = i;
                             found = true;
@@ -77,7 +77,7 @@ namespace HostFixes
                     }
                     else
                     {
-                        Log.LogError("Could not patch FacepunchSteamworks.ConnectionInfo.Identity");
+                        Log.LogError("Could not patch Facepunch Steamworks.Data.ConnectionInfo Identity");
                     }
 
                     return codes.AsEnumerable();
