@@ -433,9 +433,11 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
-                if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.serverPlayerPosition))
+
+                if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.transform.position))
                 {
                     Log.LogWarning($"Client #{clientId} {StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername} tried to pvp inside the ship.");
+                    return;
                 }
 
                 if (playerWhoHit == SenderPlayerId)
