@@ -23,6 +23,8 @@ namespace HostFixes
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
+        private static ConfigEntry<bool> configDisablePvpInShip;
+        private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static GameObject lastObjectInGift;
 
         public static Dictionary<ulong, string> connectionList = [];
@@ -32,6 +34,8 @@ namespace HostFixes
             // Plugin startup logic
             Log = Logger;
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
+            configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
+            configLogSignalTranslatorMessages = Config.Bind("General", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
@@ -69,7 +73,7 @@ namespace HostFixes
                     }
                     else
                     {
-                        Log.LogError("Could not patch");
+                        Log.LogError("Could not patch FacepunchSteamworks.ConnectionInfo.Identity");
                     }
 
                     return codes.AsEnumerable();
@@ -207,7 +211,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: ({chatMessage})");
                 }
             }
 
@@ -229,6 +233,11 @@ namespace HostFixes
                     return;
                 }
 
+                if (chatMessage.EndsWith(" started the ship."))
+                {
+                    return;
+                }
+
                 if (!connectionList.TryGetValue(steamId, out steamUsername))
                 {
                     Log.LogError($"Failed to get steam username from playerlist for steamId: {steamId}");
@@ -245,7 +254,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({steamUsername}) tried to send message as the server: {chatMessage}");
+                    Log.LogWarning($"Client #{clientId} ({steamUsername}) tried to send message as the server: ({chatMessage})");
                 }
             }
 
@@ -384,19 +393,42 @@ namespace HostFixes
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
-                if (playerWhoHit == realPlayerId)
+                if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.serverPlayerPosition))
+                {
+                    Log.LogWarning($"Client #{clientId} {StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername} tried to pvp inside the ship.");
+                }
+                if (playerWhoHit == SenderPlayerId)
+                {
+                    instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
+                }
+                else if (playerWhoHit == 0 && instance.playerClientId == (uint)SenderPlayerId)
                 {
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to spoof damage from player # {playerWhoHit} on {instance.playerUsername}.");
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to spoof damage from player # {playerWhoHit} on {instance.playerUsername}.");
                 }
+            }
+
+            public void UseSignalTranslatorServerRpc(string signalMessage, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+                if (configLogSignalTranslatorMessages.Value)
+                {
+                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) sent signal translator message: ({signalMessage})");
+                }
+                HUDManager.Instance.UseSignalTranslatorServerRpc(signalMessage);
             }
         }
 
@@ -830,6 +862,39 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch DamagePlayerFromOtherClientServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+            
+            [HarmonyPatch]
+            class UseSignalTranslatorServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(HUDManager), "__rpc_handler_2436660286")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "UseSignalTranslatorServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UseSignalTranslatorServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UseSignalTranslatorServerRpc");
                     }
 
                     return codes.AsEnumerable();
