@@ -21,6 +21,7 @@ namespace HostFixes
     {
         internal static ManualLogSource Log;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
+        internal static bool hostingLobby;
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
@@ -85,7 +86,7 @@ namespace HostFixes
         {
             internal static void ConnectionAttempt(Lobby lobby, Friend member)
             {
-                if (!connectionList.TryAdd(member.Id.Value, member.Name))
+                if (hostingLobby && !connectionList.TryAdd(member.Id.Value, member.Name))
                 {
                     Log.LogError($"{member} is already in the connection list.");
                 }
@@ -93,7 +94,7 @@ namespace HostFixes
 
             internal static void ConnectionCleanup(Lobby lobby, Friend member)
             {
-                if (!connectionList.Remove(member.Id.Value))
+                if (hostingLobby && !connectionList.Remove(member.Id.Value))
                 {
                     Log.LogError($"{member} was not in the connection list.");
                 }
@@ -101,6 +102,7 @@ namespace HostFixes
 
             internal static void LobbyCreated(Result result, Lobby lobby)
             {
+                hostingLobby = true;
                 if (!connectionList.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
                     Log.LogError($"{lobby.Id.Value} is already in the connection list.");
