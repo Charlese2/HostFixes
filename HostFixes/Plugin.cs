@@ -3,7 +3,6 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
-using HarmonyLib.Tools;
 using Steamworks;
 using Steamworks.Data;
 using System;
@@ -11,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text.RegularExpressions;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -189,12 +189,19 @@ namespace HostFixes
 
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
             {
+                string sanitizedChatMessage;
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
+
+                if (!string.IsNullOrEmpty(chatMessage))
+                {
+                    return;
+                }
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
                 {
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+                string username = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername;
                 if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{realPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
@@ -203,13 +210,27 @@ namespace HostFixes
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to chat with a playerId ({playerId}) that is not a valid player: ");
+                    Log.LogWarning($"Client #{clientId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player.");
+                    return;
+                }
+                try
+                {
+                    sanitizedChatMessage = Regex.Replace(chatMessage, "[<>\\\\][nt]?", ""); //Regex equates to [<>\\][nt]?
+                }
+                catch (Exception exception)
+                {
+                    Log.LogError($"Client #{clientId} ({username}) Regex Exception: {exception} Chat Message: ({chatMessage})");
                     return;
                 }
 
+                if (!string.IsNullOrEmpty(sanitizedChatMessage))
+                {
+                    Log.LogWarning($"Client #{clientId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
+                    return;
+                }
                 if (playerId == realPlayerId)
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
+                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [sanitizedChatMessage, playerId]).GetValue();
                 }
                 else
                 {
@@ -227,7 +248,6 @@ namespace HostFixes
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername;
                 ulong steamId = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerSteamId;
-                string steamUsername = "";
 
                 if (GameNetworkManager.Instance.disableSteam)
                 {
@@ -240,7 +260,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (!connectionList.TryGetValue(steamId, out steamUsername))
+                if (!connectionList.TryGetValue(steamId, out string steamUsername))
                 {
                     Log.LogError($"Failed to get steam username from playerlist for steamId: {steamId}");
                     return;
@@ -250,7 +270,7 @@ namespace HostFixes
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
                 }
-                else if (chatMessage.Equals($"{username} has joined the ship.") || chatMessage.Equals($"{steamUsername} has joined the ship."))
+                else if (chatMessage.Equals($"{username} joined the ship.") || chatMessage.Equals($"{steamUsername} joined the ship."))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
                 }
