@@ -3,6 +3,9 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
+using HarmonyLib.Tools;
+using Steamworks;
+using Steamworks.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,12 +20,12 @@ namespace HostFixes
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
+        internal static List<ulong> votedToLeaveEarlyPlayers = [];
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
-
-        private static List<ulong> votedToLeaveEarlyPlayers = [];
-
         private static GameObject lastObjectInGift;
+
+        public static Dictionary<ulong, string> connectionList = [];
 
         private void Awake()
         {
@@ -31,89 +34,73 @@ namespace HostFixes
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
+            SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
+            SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
+            SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
         }
 
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(HUDManager), "AddPlayerChatMessageClientRpc")]
-        class AddPlayerChatMessageClientRpc_Patch
+        private class FacepunchSteamworksFix
         {
-            public static bool Prefix(HUDManager __instance, int playerId)
+            [HarmonyPatch]
+            class Identity_Transpile
             {
-                NetworkManager networkManager = __instance.NetworkManager;
-                if (networkManager == null || !networkManager.IsListening)
+                [HarmonyPatch(typeof(ConnectionInfo), "Identity", MethodType.Getter )]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> FixIdentity(IEnumerable<CodeInstruction> instructions)
                 {
-                    return false;
-                }
-                if (!networkManager.IsHost)
-                {
-                    if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
+                    var found = false;
+                    var Location = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        return false;
+                        if (codes[i].opcode == OpCodes.Ldfld)
+                        {
+                            Location = i;
+                            found = true;
+                            break;
+                        }
                     }
+                    if (found)
+                    {
+                        codes[Location].operand = AccessTools.Field(typeof(ConnectionInfo), "identity"); //Replace mistaken `address` in Identity Getter
+                        codes.RemoveAt(Location + 1); //Remove conversion call
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch");
+                    }
+
+                    return codes.AsEnumerable();
                 }
-                return true;
             }
         }
 
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(ShipBuildModeManager), nameof(ShipBuildModeManager.PlaceShipObjectServerRpc))]
-        class PlaceShipObjectServerRpc_Patch
+        internal class ConnectionEvents
         {
-            public static bool Prefix(Vector3 newPosition)
+            internal static void ConnectionAttempt(Lobby lobby, Friend member)
             {
-                if (StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(newPosition))
+                if (!connectionList.TryAdd(member.Id.Value, member.Name))
                 {
-                    return true;
+                    Log.LogError($"{member} is already in the connection list.");
                 }
-                else
+            }
+
+            internal static void ConnectionCleanup(Lobby lobby, Friend member)
+            {
+                if (!connectionList.Remove(member.Id.Value))
                 {
-                    return false;
+                    Log.LogError($"{member} was not in the connection list.");
                 }
             }
-        }
 
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(PlayerControllerB), "SwitchToItemSlot")]
-        class SwitchToItemSlot_Patch
-        {
-            public static void Prefix(PlayerControllerB __instance, ref int slot)
+            internal static void LobbyCreated(Result result, Lobby lobby)
             {
-                slot = Mathf.Clamp(slot, 0, __instance.ItemSlots.Length - 1);
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(PlayerControllerB), "NextItemSlot")]
-        class NextItemSlot_Patch
-        {
-            public static void Prefix(PlayerControllerB __instance)
-            {
-                __instance.currentItemSlot = Mathf.Clamp(__instance.currentItemSlot, 0, __instance.ItemSlots.Length - 1);
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnPlayerDC))]
-        class OnPlayerDC_Patch
-        {
-            public static void Postfix(ulong clientId)
-            {
-                if(votedToLeaveEarlyPlayers.Contains(clientId))
+                if (!connectionList.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
-                    votedToLeaveEarlyPlayers.Remove(clientId);
-                    TimeOfDay.Instance.votesForShipToLeaveEarly = votedToLeaveEarlyPlayers.Count;
+                    Log.LogError($"{lobby.Id.Value} is already in the connection list.");
                 }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), "OpenShipDoors")]
-        class OpenShipDoors_Patch
-        {
-            public static void Prefix()
-            {
-                votedToLeaveEarlyPlayers.Clear();
             }
         }
 
@@ -137,7 +124,7 @@ namespace HostFixes
                     Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
                 }
             }
-            
+
             public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
@@ -174,7 +161,7 @@ namespace HostFixes
                     Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                 }
             }
-            
+
             public void ChangeLevelServerRpc(int levelID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
@@ -221,6 +208,44 @@ namespace HostFixes
                 else
                 {
                     Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to send message as another player: {chatMessage}");
+                }
+            }
+
+            public void AddTextMessageServerRpc(string chatMessage, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int realPlayerId))
+                {
+                    Log.LogError($"Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+                string username = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername;
+                ulong steamId = StartOfRound.Instance.allPlayerScripts[realPlayerId].playerSteamId;
+                string steamUsername = "";
+
+                if (GameNetworkManager.Instance.disableSteam)
+                {
+                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
+                    return;
+                }
+
+                if (!connectionList.TryGetValue(steamId, out steamUsername))
+                {
+                    Log.LogError($"Failed to get steam username from playerlist for steamId: {steamId}");
+                    return;
+                }
+
+                if (clientId == 0)
+                {
+                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
+                }
+                else if (chatMessage.Equals($"{username} has joined the ship.") || chatMessage.Equals($"{steamUsername} has joined the ship."))
+                {
+                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
+                }
+                else
+                {
+                    Log.LogWarning($"Client #{clientId} ({steamUsername}) tried to send message as the server: {chatMessage}");
                 }
             }
 
@@ -282,7 +307,7 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[playerClientId];
                 if (playerClientId == realPlayerId)
                 {
-                    if(player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
+                    if (player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
                     {
                         Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
                         return;
@@ -352,7 +377,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call SendNewPlayerValuesServerRpc on another player.");
+                    Log.LogWarning($"Client #{clientId} ({instance.playerUsername}) tried to call SendNewPlayerValuesServerRpc on another player.");
                 }
             }
 
@@ -375,404 +400,440 @@ namespace HostFixes
             }
         }
 
-        [HarmonyPatch]
-        class BuyItemsServerRpc_Transpile
+        private class ServerRPCMessageHandlers
         {
-            [HarmonyPatch(typeof(Terminal), "__rpc_handler_4003509079")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class BuyItemsServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(Terminal), "__rpc_handler_4003509079")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyItemsServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyItemsServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch BuyItemsServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyItemsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch BuyItemsServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class SyncGroupCreditsServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(Terminal), "__rpc_handler_3085407145")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class SyncGroupCreditsServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(Terminal), "__rpc_handler_3085407145")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SyncGroupCreditsServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SyncGroupCreditsServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncGroupCreditsServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch SyncGroupCreditsServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncGroupCreditsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SyncGroupCreditsServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class BuyShipUnlockableServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_3953483456")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class BuyShipUnlockableServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_3953483456")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyShipUnlockableServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyShipUnlockableServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyShipUnlockableServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch BuyShipUnlockableServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.BuyShipUnlockableServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch BuyShipUnlockableServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class ChangeLevelServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_1134466287")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class ChangeLevelServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_1134466287")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "ChangeLevelServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "ChangeLevelServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeLevelServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch ChangeLevelServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeLevelServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch ChangeLevelServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class AddPlayerChatMessageServerRpcHandler_Transpile
-        {
-            [HarmonyPatch(typeof(HUDManager), "__rpc_handler_2930587515")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class AddPlayerChatMessageServerRpcHandler_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(HUDManager), "__rpc_handler_2930587515")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "AddPlayerChatMessageServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "AddPlayerChatMessageServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AddPlayerChatMessageServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch AddPlayerChatMessageServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AddPlayerChatMessageServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch AddPlayerChatMessageServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class SetShipLeaveEarlyServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(TimeOfDay), "__rpc_handler_543987598")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class AddTextMessageServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(HUDManager), "__rpc_handler_2787681914")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SetShipLeaveEarlyServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "AddTextMessageServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetShipLeaveEarlyServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch SetShipLeaveEarlyServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AddTextMessageServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch AddTextMessageServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class DespawnEnemyServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(RoundManager), "__rpc_handler_3840785488")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class SetShipLeaveEarlyServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(TimeOfDay), "__rpc_handler_543987598")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DespawnEnemyServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SetShipLeaveEarlyServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DespawnEnemyServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch DespawnEnemyServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetShipLeaveEarlyServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SetShipLeaveEarlyServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class EndGameServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_2028434619")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class DespawnEnemyServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(RoundManager), "__rpc_handler_3840785488")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "EndGameServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DespawnEnemyServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.EndGameServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch EndGameServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DespawnEnemyServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch DespawnEnemyServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class PlayerLoadedServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_4249638645")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class EndGameServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_2028434619")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "PlayerLoadedServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "EndGameServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlayerLoadedServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch PlayerLoadedServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.EndGameServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch EndGameServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class OpenGiftBoxServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(GiftBoxItem), "__rpc_handler_2878544999")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class PlayerLoadedServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_4249638645")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "OpenGiftBoxServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "PlayerLoadedServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.OpenGiftBoxServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch OpenGiftBoxServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlayerLoadedServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayerLoadedServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class SendNewPlayerValuesServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_2504133785")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class OpenGiftBoxServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(GiftBoxItem), "__rpc_handler_2878544999")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SendNewPlayerValuesServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "OpenGiftBoxServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SendNewPlayerValuesServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch SendNewPlayerValuesServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.OpenGiftBoxServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch OpenGiftBoxServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
             }
-        }
 
-        [HarmonyPatch]
-        class DamagePlayerFromOtherClientServerRpc_Transpile
-        {
-            [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_638895557")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+            [HarmonyPatch]
+            class SendNewPlayerValuesServerRpc_Transpile
             {
-                var found = false;
-                var callLocation = -1;
-                var codes = new List<CodeInstruction>(instructions);
-                for (int i = 0; i < codes.Count; i++)
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_2504133785")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
-                    if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DamagePlayerFromOtherClientServerRpc")
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
                     {
-                        callLocation = i;
-                        found = true;
-                        break;
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SendNewPlayerValuesServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
                     }
-                }
-                if (found)
-                {
-                    codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                    codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                    codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DamagePlayerFromOtherClientServerRpc));
-                }
-                else
-                {
-                    Log.LogError("Could not patch DamagePlayerFromOtherClientServerRpc");
-                }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SendNewPlayerValuesServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SendNewPlayerValuesServerRpc");
+                    }
 
-                return codes.AsEnumerable();
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class DamagePlayerFromOtherClientServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_638895557")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DamagePlayerFromOtherClientServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.DamagePlayerFromOtherClientServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch DamagePlayerFromOtherClientServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
             }
         }
     }
