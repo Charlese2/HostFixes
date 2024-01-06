@@ -224,7 +224,7 @@ namespace HostFixes
 
                 try
                 {
-                    sanitizedChatMessage = Regex.Replace(chatMessage, "[<>\\\\][nt]?", ""); //Regex equates to [<>\\][nt]?
+                    sanitizedChatMessage = Regex.Replace(chatMessage, ">|[\\\\][nt]", ""); //Regex equates to >|[\\][nt]
                 }
                 catch (Exception exception)
                 {
