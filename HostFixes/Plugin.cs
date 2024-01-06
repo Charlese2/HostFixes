@@ -26,6 +26,7 @@ namespace HostFixes
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
+        private static ConfigEntry<bool> configLogPvp;
         private static GameObject lastObjectInGift;
 
         public static Dictionary<ulong, string> connectionList = [];
@@ -36,7 +37,8 @@ namespace HostFixes
             Log = Logger;
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
-            configLogSignalTranslatorMessages = Config.Bind("General", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
+            configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
+            configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
@@ -433,15 +435,17 @@ namespace HostFixes
                     Log.LogError($"Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
 
                 if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.transform.position))
                 {
-                    Log.LogWarning($"Client #{clientId} {StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername} tried to pvp inside the ship.");
+                    Log.LogWarning($"Client #{clientId} ({username}) tried to pvp inside the ship.");
                     return;
                 }
 
                 if (playerWhoHit == SenderPlayerId)
                 {
+                    if (configLogPvp.Value) Log.LogWarning($"Client #{clientId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage");
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
                 }
                 else if (playerWhoHit == 0 && instance.playerClientId == (uint)SenderPlayerId)
@@ -450,7 +454,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to spoof damage from player # {playerWhoHit} on {instance.playerUsername}.");
+                    Log.LogWarning($"Client #{clientId} ({username}) tried to spoof damage from player #{playerWhoHit} on {instance.playerUsername}.");
                 }
             }
 
