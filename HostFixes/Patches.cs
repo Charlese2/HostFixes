@@ -19,9 +19,9 @@ namespace HostFixes
             {
                 if (hostingLobby) 
                 { 
-                    connectionList.Clear(); 
+                    playerSteamNames.Clear();
+                    hostingLobby = false;
                 }
-                hostingLobby = false;
             }
         }
 

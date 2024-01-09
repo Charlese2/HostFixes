@@ -22,14 +22,13 @@ namespace HostFixes
         internal static ManualLogSource Log;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
         internal static bool hostingLobby;
+        internal static Dictionary<ulong, string> playerSteamNames = [];
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
         private static GameObject lastObjectInGift;
-
-        public static Dictionary<ulong, string> connectionList = [];
 
         private void Awake()
         {
@@ -52,26 +51,26 @@ namespace HostFixes
         {
             internal static void ConnectionAttempt(Lobby lobby, Friend member)
             {
-                if (hostingLobby && !connectionList.TryAdd(member.Id.Value, member.Name))
+                if (hostingLobby && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
-                    Log.LogError($"{member} is already in the connection list.");
+                    Log.LogError($"{member.Id.Value} is already in the connection list.");
                 }
             }
 
             internal static void ConnectionCleanup(Lobby lobby, Friend member)
             {
-                if (hostingLobby && !connectionList.Remove(member.Id.Value))
+                if (hostingLobby && !playerSteamNames.Remove(member.Id.Value))
                 {
-                    Log.LogError($"{member} was not in the connection list.");
+                    Log.LogError($"{member.Id.Value} was not in the connection list.");
                 }
             }
 
             internal static void LobbyCreated(Result result, Lobby lobby)
             {
                 hostingLobby = true;
-                if (!connectionList.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
+                if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
-                    Log.LogError($"{lobby.Id.Value} is already in the connection list.");
+                    Log.LogError($"{lobby.Owner.Id.Value} is already in the connection list.");
                 }
             }
         }
