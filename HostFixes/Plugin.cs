@@ -28,7 +28,6 @@ namespace HostFixes
         private static ConfigEntry<bool> configDisablePvpInShip;
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
-        private static GameObject lastObjectInGift;
 
         private void Awake()
         {
@@ -364,26 +363,6 @@ namespace HostFixes
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
                     }
-                }
-            }
-
-            public void OpenGiftBoxServerRpc(GiftBoxItem instance, ServerRpcParams serverRpcParams)
-            {
-                GameObject objectInPresent = Traverse.Create(instance).Field("objectInPresent").GetValue() as GameObject;
-                if (objectInPresent == null)
-                {
-                    instance.OpenGiftBoxServerRpc(); //Let the client clean up bugged giftbox.
-                    return;
-                }
-
-                if (objectInPresent != lastObjectInGift || lastObjectInGift == null)
-                {
-                    lastObjectInGift = objectInPresent;
-                    instance.OpenGiftBoxServerRpc();
-                }
-                else
-                {
-                    Log.LogWarning($"Preventing spawning extra items from OpenGiftBoxServerRpc calls.");
                 }
             }
 
@@ -798,40 +777,6 @@ namespace HostFixes
                 }
             }
 
-            [HarmonyPatch]
-            class OpenGiftBoxServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(GiftBoxItem), "__rpc_handler_2878544999")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "OpenGiftBoxServerRpc")
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.OpenGiftBoxServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch OpenGiftBoxServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
 
             [HarmonyPatch]
             class SendNewPlayerValuesServerRpc_Transpile
