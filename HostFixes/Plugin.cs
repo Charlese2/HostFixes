@@ -39,50 +39,13 @@ namespace HostFixes
             configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
             configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
+
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
             SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
-        }
-
-        private class FacepunchSteamworksFix
-        {
-            [HarmonyPatch]
-            class Identity_Transpile
-            {
-                [HarmonyPatch(typeof(ConnectionInfo), "Identity", MethodType.Getter )]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> FixIdentity(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var Location = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Ldfld && (codes[i].operand as FieldInfo)?.FieldType == typeof(NetAddress))
-                        {
-                            Location = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes[Location].operand = AccessTools.Field(typeof(ConnectionInfo), "identity"); //Replace mistaken `address` in Identity Getter
-                        codes.RemoveAt(Location + 1); //Remove conversion call
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch Facepunch Steamworks.Data.ConnectionInfo Identity");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
         }
 
         internal class ConnectionEvents

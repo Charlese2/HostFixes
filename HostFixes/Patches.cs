@@ -1,10 +1,6 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
-using Netcode.Transports.Facepunch;
-using Steamworks.Data;
-using System;
 using System.Linq;
-using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 using static HostFixes.Plugin;
@@ -13,25 +9,7 @@ namespace HostFixes
 {
     internal class Patches
     {
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(FacepunchTransport), "Steamworks.ISocketManager.OnConnecting")]
-        class Identity_Fix
-        {
-            public static bool Prefix(ref Connection connection, ref ConnectionInfo info)
-            {
-                var identity = Traverse.Create(info).Field<NetIdentity>("identity").Value;
 
-                ulong SteamId = identity.SteamId.Value;
-
-                if (StartOfRound.Instance.KickedClientIds.Contains(SteamId))
-                {
-                    Log.LogWarning($"SteamId: ({SteamId}) blocked from reconnecting.");
-                    connection.Close();
-                    return false;
-                }
-                return true;
-            }
-        }
 
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
