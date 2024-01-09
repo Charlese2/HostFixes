@@ -397,7 +397,7 @@ namespace HostFixes
 
                 if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.transform.position))
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to pvp inside the ship.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) inside the ship.");
                     return;
                 }
 
