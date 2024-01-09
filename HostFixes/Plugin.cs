@@ -403,7 +403,7 @@ namespace HostFixes
 
                 if (playerWhoHit == SenderPlayerId)
                 {
-                    if (configLogPvp.Value) Log.LogWarning($"Client #{clientId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage");
+                    if (configLogPvp.Value) Log.LogWarning($"Player #{SenderPlayerId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage");
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
                 }
                 else if (playerWhoHit == 0 && instance.playerClientId == (uint)SenderPlayerId)
