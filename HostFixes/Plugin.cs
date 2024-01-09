@@ -85,15 +85,32 @@ namespace HostFixes
                     Log.LogError($"[BuyItemsServerRpc] Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+                int cost = 0;
 
-                if (newGroupCredits < instance.groupCredits)
+                // Add up each item's cost
+                foreach (int item in boughtItems)
                 {
-                    instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                    try
+                    {
+                        Log.LogInfo($"item: {item}");
+                        _ = instance.buyableItemsList[item];
+                    }
+                    catch
+                    {
+                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
+                        return;
+                    }
+                    cost += (int)(instance.buyableItemsList[item].creditsWorth * (float)(instance.itemSalesPercentages[item] / 100f));
                 }
-                else
+                
+                if (instance.groupCredits - cost != newGroupCredits)
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+                    return;
                 }
+
+                instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
             }
 
             public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
