@@ -28,6 +28,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configDisablePvpInShip;
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
+        private static ConfigEntry<bool> configExperimentalChanges;
 
         private void Awake()
         {
@@ -37,6 +38,7 @@ namespace HostFixes
             configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
             configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
+            configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -87,26 +89,29 @@ namespace HostFixes
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 int cost = 0;
 
-                // Add up each item's cost
-                foreach (int item in boughtItems)
+                if (configExperimentalChanges.Value)
                 {
-                    try
+                    // Add up each item's cost
+                    foreach (int item in boughtItems)
                     {
-                        Log.LogInfo($"item: {item}");
-                        _ = instance.buyableItemsList[item];
+                        try
+                        {
+                            Log.LogInfo($"item: {item}");
+                            _ = instance.buyableItemsList[item];
+                        }
+                        catch
+                        {
+                            Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
+                            return;
+                        }
+                        cost += (int)(instance.buyableItemsList[item].creditsWorth * (float)(instance.itemSalesPercentages[item] / 100f));
                     }
-                    catch
+
+                    if (instance.groupCredits - cost != newGroupCredits)
                     {
-                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
                         return;
                     }
-                    cost += (int)(instance.buyableItemsList[item].creditsWorth * (float)(instance.itemSalesPercentages[item] / 100f));
-                }
-                
-                if (instance.groupCredits - cost != newGroupCredits)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
-                    return;
                 }
 
                 instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
