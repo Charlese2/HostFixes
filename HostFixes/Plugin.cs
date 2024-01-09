@@ -362,7 +362,7 @@ namespace HostFixes
                 {
                     if (StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                     {
-                        Log.LogWarning($"Client #{clientId} ({StartOfRound.Instance.allPlayerScripts[realPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
+                        Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
                     }
                 }
             }
