@@ -161,7 +161,7 @@ namespace HostFixes
                 }
 
                 Terminal terminal = FindObjectOfType<Terminal>();
-                if (clientId == 0 || newGroupCreditsAmount < terminal.groupCredits)
+                if (newGroupCreditsAmount <= terminal.groupCredits)
                 {
                     StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
                 }
