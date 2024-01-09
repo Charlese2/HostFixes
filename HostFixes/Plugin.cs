@@ -177,7 +177,7 @@ namespace HostFixes
                 string sanitizedChatMessage;
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
 
-                if (!string.IsNullOrEmpty(chatMessage))
+                if (string.IsNullOrEmpty(chatMessage))
                 {
                     return;
                 }
@@ -211,7 +211,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (!string.IsNullOrEmpty(sanitizedChatMessage))
+                if (string.IsNullOrEmpty(sanitizedChatMessage))
                 {
                     Log.LogWarning($"Client #{SenderPlayerId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
                     return;
@@ -259,7 +259,7 @@ namespace HostFixes
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
                 }
-                else if (chatMessage.Equals($"{username} joined the ship.") || chatMessage.Equals($"{steamUsername} joined the ship."))
+                else if (chatMessage.Equals($"{username} joined the ship.") || chatMessage.Equals($"{steamUsername} joined the ship.") || chatMessage.Equals($"{username} was left behind."))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
                 }
