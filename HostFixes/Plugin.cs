@@ -122,7 +122,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (newGroupCredits <= instance.groupCredits)
+                if (clientId != 0 && newGroupCredits < instance.groupCredits)
                 {
                     instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
                 }
@@ -142,7 +142,7 @@ namespace HostFixes
                 }
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                if (newGroupCreditsAmount <= terminal.groupCredits)
+                if (clientId != 0 && newGroupCreditsAmount < terminal.groupCredits)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                 }
