@@ -164,6 +164,13 @@ namespace HostFixes
                     Log.LogError($"[ChangeLevelServerRpc] Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+
+                if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
+                    return;
+                }
 
                 Terminal terminal = FindObjectOfType<Terminal>();
                 if (newGroupCreditsAmount <= terminal.groupCredits)
@@ -172,7 +179,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                 }
             }
 
@@ -399,6 +406,13 @@ namespace HostFixes
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+                PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (sendingPlayer.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) while they are dead on the server.");
+                    return;
+                }
 
                 if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.transform.position))
                 {
@@ -447,6 +461,13 @@ namespace HostFixes
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
                     Log.LogError($"[UseSignalTranslatorServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+
+                if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to send a Signal Translator message while they are dead on the server. Message: ({signalMessage})");
                     return;
                 }
 
