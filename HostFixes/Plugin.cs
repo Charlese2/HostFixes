@@ -96,7 +96,6 @@ namespace HostFixes
                     {
                         try
                         {
-                            Log.LogInfo($"item: {item}");
                             _ = instance.buyableItemsList[item];
                         }
                         catch
@@ -195,7 +194,7 @@ namespace HostFixes
 
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from clientId: ({clientId}) Message: ({chatMessage})");
                     return;
                 }
 
@@ -224,7 +223,7 @@ namespace HostFixes
 
                 if (string.IsNullOrEmpty(sanitizedChatMessage))
                 {
-                    Log.LogWarning($"Client #{SenderPlayerId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
                     return;
                 }
 
@@ -234,7 +233,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to send message as another player: ({chatMessage})");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to send message as another player: ({chatMessage})");
                 }
             }
 
@@ -243,7 +242,7 @@ namespace HostFixes
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[AddTextMessageServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[AddTextMessageServerRpc] Failed to get the playerId from clientId: ({clientId}) Message: ({chatMessage})");
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
@@ -266,11 +265,10 @@ namespace HostFixes
                     return;
                 }
 
-                if (clientId == 0)
-                {
-                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
-                }
-                else if (chatMessage.Equals($"{username} joined the ship.") || chatMessage.Equals($"{steamUsername} joined the ship.") || chatMessage.Equals($"{username} was left behind."))
+                if (clientId == 0 || 
+                    chatMessage.Equals($"{username} joined the ship.") || 
+                    chatMessage.Equals($"{steamUsername} joined the ship.") || 
+                    chatMessage.Equals($"{username} was left behind."))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
                 }
@@ -893,7 +891,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetShipLightsServerRpc_Transpile
             {
