@@ -421,6 +421,26 @@ namespace HostFixes
                 }
             }
 
+            public void SetShipLightsServerRpc(bool setLightsOn, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[GrabObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+                PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (sendingPlayer.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to toggle ship lights while they are dead on the server.");
+                    return;
+                }
+
+                StartOfRound.Instance.shipRoomLights.SetShipLightsServerRpc(setLightsOn);
+            }
+
             public void UseSignalTranslatorServerRpc(string signalMessage, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
@@ -853,6 +873,40 @@ namespace HostFixes
                 }
             }
             
+            [HarmonyPatch]
+            class SetShipLightsServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipLights), "__rpc_handler_1625678258")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SetShipLightsServerRpc")
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetShipLightsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SetShipLightsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
             [HarmonyPatch]
             class UseSignalTranslatorServerRpc_Transpile
             {
