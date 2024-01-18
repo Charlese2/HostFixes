@@ -50,7 +50,7 @@ namespace HostFixes
 
         internal class ConnectionEvents
         {
-            internal static void ConnectionAttempt(Lobby lobby, Friend member)
+            internal static void ConnectionAttempt(Lobby _, Friend member)
             {
                 if (hostingLobby && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
@@ -58,7 +58,7 @@ namespace HostFixes
                 }
             }
 
-            internal static void ConnectionCleanup(Lobby lobby, Friend member)
+            internal static void ConnectionCleanup(Lobby _, Friend member)
             {
                 if (hostingLobby && !playerSteamNames.Remove(member.Id.Value))
                 {
@@ -281,9 +281,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (clientId == 0 || 
-                    chatMessage.Equals($"{username} joined the ship.") || 
-                    chatMessage.Equals($"{steamUsername} joined the ship.") || 
+                if (clientId == 0 ||
+                    chatMessage.Equals($"{username} joined the ship.") ||
+                    chatMessage.Equals($"{steamUsername} joined the ship.") ||
                     chatMessage.Equals($"{username} was left behind."))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
@@ -507,7 +507,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyItemsServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "BuyItemsServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -542,7 +542,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SyncGroupCreditsServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncGroupCreditsServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -577,7 +577,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "BuyShipUnlockableServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "BuyShipUnlockableServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -611,7 +611,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "ChangeLevelServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ChangeLevelServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -645,7 +645,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "AddPlayerChatMessageServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "AddPlayerChatMessageServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -679,7 +679,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "AddTextMessageServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "AddTextMessageServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -713,7 +713,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SetShipLeaveEarlyServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetShipLeaveEarlyServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -747,7 +747,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DespawnEnemyServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "DespawnEnemyServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -781,7 +781,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "EndGameServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "EndGameServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -815,7 +815,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "PlayerLoadedServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayerLoadedServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -850,7 +850,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SendNewPlayerValuesServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SendNewPlayerValuesServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -885,7 +885,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "DamagePlayerFromOtherClientServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "DamagePlayerFromOtherClientServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -920,7 +920,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "SetShipLightsServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetShipLightsServerRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -954,7 +954,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && (codes[i].operand as MethodInfo)?.Name == "UseSignalTranslatorServerRpc")
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UseSignalTranslatorServerRpc" })
                         {
                             callLocation = i;
                             found = true;

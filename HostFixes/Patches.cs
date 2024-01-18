@@ -9,16 +9,14 @@ namespace HostFixes
 {
     internal class Patches
     {
-
-
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
         class LeaveCurrentSteamLobby_Patch
         {
             public static void Prefix()
             {
-                if (hostingLobby) 
-                { 
+                if (hostingLobby)
+                {
                     playerSteamNames.Clear();
                     hostingLobby = false;
                 }
