@@ -23,6 +23,10 @@ namespace HostFixes
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
         internal static bool hostingLobby;
         internal static Dictionary<ulong, string> playerSteamNames = [];
+        internal static Dictionary<ulong, Vector3> playerPositions = [];
+        internal static Dictionary<ulong, bool> allowedMovement = [];
+        internal static Dictionary<ulong, bool> onShip = [];
+        internal static float positionCacheUpdateTime = 0;
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
@@ -46,6 +50,35 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
+            InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
+        }
+
+        private void UpdatePlayerPositionCache()
+        {
+            if (NetworkManager.Singleton?.IsHost == false || StartOfRound.Instance == null) return;
+            positionCacheUpdateTime = Time.time;
+
+            foreach (PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
+            {
+                if (player.isPlayerDead || !player.isPlayerControlled) 
+                {
+                    return;
+                }
+                playerPositions[player.playerClientId] = player.transform.localPosition;
+            }
+        }
+
+        private static void MovementAllowed(ulong playerId, bool movementEnabled = true)
+        {
+            try
+            {
+                if (allowedMovement[playerId] != movementEnabled) Log.LogDebug($"Player #{playerId} ({StartOfRound.Instance.allPlayerScripts[playerId].playerUsername}) movement toggled to {movementEnabled}");
+                allowedMovement[playerId] = movementEnabled;
+            }
+            catch
+            {
+                allowedMovement[playerId] = true;
+            }
         }
 
         internal class ConnectionEvents
@@ -490,6 +523,111 @@ namespace HostFixes
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) sent signal translator message: ({signalMessage})");
                 }
                 HUDManager.Instance.UseSignalTranslatorServerRpc(signalMessage);
+            }
+
+            public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                if (!configExperimentalChanges.Value)
+                {
+                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                    return;
+                }
+
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[UpdatePlayerPositionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (instance.isPlayerDead)
+                {
+                    MovementAllowed(instance.playerClientId, false);
+                    return;
+                }
+
+                try
+                {
+                    if (onShip[instance.playerClientId] != inElevator)
+                    {
+                        playerPositions[instance.playerClientId] = instance.transform.localPosition;
+                        onShip[instance.playerClientId] = inElevator;
+                    }
+
+                    float timeSinceLast = Time.time - positionCacheUpdateTime;
+
+                    float downwardDotProduct = Vector3.Dot((newPos - instance.transform.localPosition).normalized, Vector3.down);
+                    float maxSpeed = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f));
+                    if (downwardDotProduct > 0.3f)
+                    {
+                        Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                        return;
+                    }
+
+                    if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > (maxSpeed * timeSinceLast) + 1)
+                    {
+                        Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, 1f);
+                        MovementAllowed(instance.playerClientId, false);
+                        Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                        return;
+                    }
+
+                    MovementAllowed(instance.playerClientId, true);
+                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                }
+                catch
+                {
+                    onShip[instance.playerClientId] = inElevator;
+                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                }
+            }
+
+            public void UpdatePlayerRotationServerRpc(short newRot, short newYRot, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                try
+                {
+                    if (!allowedMovement[instance.playerClientId])
+                    {
+                        return;
+                    }
+                    Traverse.Create(instance).Method("UpdatePlayerRotationServerRpc", [newRot, newYRot]).GetValue();
+                }
+                catch
+                {
+                    Traverse.Create(instance).Method("UpdatePlayerRotationServerRpc", [newRot, newYRot]).GetValue();
+                }
+            }
+
+            public void UpdatePlayerRotationFullServerRpc(Vector3 playerEulers, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                try
+                {
+                    if (!allowedMovement[instance.playerClientId])
+                    {
+                        return;
+                    }
+                    Traverse.Create(instance).Method("UpdatePlayerRotationFullServerRpc", [playerEulers]).GetValue();
+                }
+                catch
+                {
+                    Traverse.Create(instance).Method("UpdatePlayerRotationFullServerRpc", [playerEulers]).GetValue();
+                }
+            }
+
+            public void UpdatePlayerAnimationServerRpc(int animationState, float animationSpeed, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                try
+                {
+                    if (!allowedMovement[instance.playerClientId])
+                    {
+                        return;
+                    }
+                    Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
+                }
+                catch
+                {
+                    Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
+                }
             }
         }
 
@@ -970,6 +1108,146 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch UseSignalTranslatorServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdatePlayerPositionServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_2013428264")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerPositionServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdatePlayerPositionServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdatePlayerPositionServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdatePlayerRotationServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_588787670")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerRotationServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdatePlayerRotationServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdatePlayerRotationServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdatePlayerRotationFullServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_3789403418")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerRotationFullServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdatePlayerRotationFullServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdatePlayerRotationFullServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdatePlayerAnimationServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_3473255830")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerAnimationServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdatePlayerAnimationServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdatePlayerAnimationServerRpc");
                     }
 
                     return codes.AsEnumerable();
