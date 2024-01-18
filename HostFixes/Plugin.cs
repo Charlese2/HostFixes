@@ -88,9 +88,16 @@ namespace HostFixes
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 int cost = 0;
+                int count = 0;
 
                 if (configExperimentalChanges.Value)
                 {
+                    if (instance.numberOfItemsInDropship + boughtItems.Length > 12)
+                    {
+                        Log.LogWarning($"Trying to buy too many items.");
+                        return;
+                    }
+
                     // Add up each item's cost
                     foreach (int item in boughtItems)
                     {
@@ -103,12 +110,21 @@ namespace HostFixes
                             Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
                             return;
                         }
-                        cost += (int)(instance.buyableItemsList[item].creditsWorth * (float)(instance.itemSalesPercentages[item] / 100f));
+                        cost += (int)(instance.buyableItemsList[item].creditsWorth * (instance.itemSalesPercentages[item] / 100f));
+                        count++;
                     }
 
-                    if (instance.groupCredits - cost != newGroupCredits)
+                    if (instance.groupCredits - cost == newGroupCredits)
                     {
-                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+                        instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                        return;
+                    }
+                    Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+
+                    if (instance.groupCredits - cost < newGroupCredits + count && instance.groupCredits - cost > newGroupCredits - count)
+                    {
+                        Log.LogWarning($"[Experimental] Credit value is slightly off.");
+                        instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
                         return;
                     }
                 }
