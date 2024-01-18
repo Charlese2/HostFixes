@@ -385,21 +385,28 @@ namespace HostFixes
                     return;
                 }
 
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[playerClientId];
-                if (playerClientId == SenderPlayerId)
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (playerClientId != SenderPlayerId)
                 {
-                    if (player.isPlayerDead || !player.isPlayerControlled) //TODO: Add distance from lever check
-                    {
-                        Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to force end the game. Could be desynced from host.");
-                        return;
-                    }
-                    StartOfRound.Instance.EndGameServerRpc(playerClientId);
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end the game while spoofing another player.");
+                    return;
+                }
 
-                }
-                else
+                if (player.isPlayerDead || !player.isPlayerControlled)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to end the game while spoofing another player.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to force end the game. Could be desynced from host.");
+                    return;
                 }
+
+                var lever = FindFirstObjectByType<StartMatchLever>();
+                if (Vector3.Distance(lever.transform.position, player.transform.position) > 5f)
+                {
+                    float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end game while too far away ({distanceToLever}).");
+                    return;
+                }
+
+                StartOfRound.Instance.EndGameServerRpc(playerClientId);
             }
 
             public void PlayerLoadedServerRpc(ulong clientId, ServerRpcParams serverRpcParams)
@@ -458,6 +465,14 @@ namespace HostFixes
                 if (sendingPlayer.isPlayerDead)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) while they are dead on the server.");
+                    return;
+                }
+
+                if (Vector3.Distance(sendingPlayer.transform.position, instance.transform.position) > 10f
+                    && Physics.Raycast(sendingPlayer.transform.position, instance.transform.position - sendingPlayer.transform.position, out RaycastHit hit, 100f)
+                    && hit.transform != instance.transform)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) from too far away or out of line of sight.");
                     return;
                 }
 
