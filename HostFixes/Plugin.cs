@@ -194,6 +194,28 @@ namespace HostFixes
                 }
                 Terminal terminal = FindObjectOfType<Terminal>();
 
+                if (configExperimentalChanges.Value)
+                {
+                    if (StartOfRound.Instance.unlockablesList.unlockables.Count <= 0 || unlockableID > StartOfRound.Instance.unlockablesList.unlockables.Count)
+                    {
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to by unlockable that is out of unlockables list. ({unlockableID}).");
+                        return;
+                    }
+
+                    if (StartOfRound.Instance.unlockablesList.unlockables[unlockableID].alreadyUnlocked)
+                    {
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to unlock an unlockable twice");
+                        return;
+                    }
+
+                    int unlockableCost = StartOfRound.Instance.unlockablesList.unlockables[unlockableID].shopSelectionNode.itemCost;
+                    if (clientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
+                    {
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount. Current credits: {terminal.groupCredits} Credits cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
+                        return;
+                    }
+                }
+
                 if (clientId == 0 || newGroupCreditsAmount < terminal.groupCredits)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
@@ -217,6 +239,12 @@ namespace HostFixes
                 if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
+                    return;
+                }
+
+                if (newGroupCreditsAmount < 0)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried set credits to a negative number ({newGroupCreditsAmount}).");
                     return;
                 }
 
