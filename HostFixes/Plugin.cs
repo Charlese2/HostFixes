@@ -21,6 +21,7 @@ namespace HostFixes
     {
         internal static ManualLogSource Log;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
+        internal static CompatibleNoun[] moons;
         internal static bool hostingLobby;
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -249,14 +250,27 @@ namespace HostFixes
                 }
 
                 Terminal terminal = FindObjectOfType<Terminal>();
-                if (newGroupCreditsAmount <= terminal.groupCredits)
+
+                if (configExperimentalChanges.Value)
                 {
-                    StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
+                    moons ??= terminal.terminalNodes.allKeywords[26/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
+
+                    int moonCost = moons[levelID].result.itemCost;
+                    if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
+                    {
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
+                        return;
+                    }
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                    if (newGroupCreditsAmount > terminal.groupCredits)
+                    {
+                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                        return;
+                    }
                 }
+                StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
             }
 
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
