@@ -153,7 +153,6 @@ namespace HostFixes
                         instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
                         return;
                     }
-                    Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
 
                     if (instance.groupCredits - cost < newGroupCredits + count && instance.groupCredits - cost > newGroupCredits - count)
                     {
@@ -161,9 +160,8 @@ namespace HostFixes
                         instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
                         return;
                     }
+                    Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
                 }
-
-                instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
             }
 
             public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
@@ -181,7 +179,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted Credit Value: {newGroupCredits} Old Credit Value: {instance.groupCredits}");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted credit value: {newGroupCredits} Old credit value: {instance.groupCredits}");
                 }
             }
 
@@ -212,7 +210,7 @@ namespace HostFixes
                     int unlockableCost = StartOfRound.Instance.unlockablesList.unlockables[unlockableID].shopSelectionNode.itemCost;
                     if (clientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
                     {
-                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount. Current credits: {terminal.groupCredits} Credits cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount for unlockable. Current credits: {terminal.groupCredits} Unlockable cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
                         return;
                     }
                 }
@@ -223,7 +221,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted credit value: {newGroupCreditsAmount} Old credit value: {terminal.groupCredits}");
                 }
             }
 
