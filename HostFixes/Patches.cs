@@ -47,18 +47,14 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(ShipBuildModeManager), nameof(ShipBuildModeManager.PlaceShipObjectServerRpc))]
+        [HarmonyPatch(typeof(ShipBuildModeManager), "Update")]
         class PlaceShipObjectServerRpc_Patch
         {
-            public static bool Prefix(Vector3 newPosition)
+            public static void Postfix(Transform ___ghostObject)
             {
-                if (StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(newPosition))
+                if (___ghostObject.eulerAngles.x != 270f || ___ghostObject.eulerAngles.z != 0f)
                 {
-                    return true;
-                }
-                else
-                {
-                    return false;
+                    ___ghostObject.eulerAngles = new Vector3(270f, ___ghostObject.eulerAngles.y, 0f);
                 }
             }
         }

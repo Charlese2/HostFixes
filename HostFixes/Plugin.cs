@@ -256,7 +256,7 @@ namespace HostFixes
                     int moonCost = moons[levelID].result.itemCost;
                     if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
-                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
+                        Log.LogWarning($"[Experimental] Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
                         return;
                     }
                 }
@@ -397,6 +397,38 @@ namespace HostFixes
                 }
             }
 
+            public void PlaceShipObjectServerRpc(Vector3 newPosition, Vector3 newRotation, NetworkObjectReference objectRef, int playerWhoMoved, ShipBuildModeManager instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SetShipLeaveEarlyServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (playerWhoMoved != SenderPlayerId)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object while spoofing another player.");
+                    return;
+                }
+
+                if (newRotation.x != 270f || newRotation.z != 0f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object with the wrong rotation.");
+                    return;
+                }
+
+                if (!StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(newPosition))
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object ouside of the ship.");
+                    return;
+                }
+
+                instance.PlaceShipObjectServerRpc(newPosition, newRotation, objectRef, playerWhoMoved);
+            }
+
             public void DespawnEnemyServerRpc(NetworkObjectReference enemyNetworkObject, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
@@ -512,7 +544,7 @@ namespace HostFixes
                     && Physics.Raycast(sendingPlayer.transform.position, instance.transform.position - sendingPlayer.transform.position, out RaycastHit hit, 100f)
                     && hit.transform != instance.transform)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) from too far away or out of line of sight.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) from too far away and out of line of sight.");
                     return;
                 }
 
@@ -922,6 +954,43 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SetShipLeaveEarlyServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+
+
+            [HarmonyPatch]
+            class PlaceShipObjectServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipBuildModeManager), "__rpc_handler_861494715")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlaceShipObjectServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlaceShipObjectServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlaceShipObjectServerRpc");
                     }
 
                     return codes.AsEnumerable();
