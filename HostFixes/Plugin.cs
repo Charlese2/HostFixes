@@ -546,17 +546,20 @@ namespace HostFixes
                     return;
                 }
 
-                if (clientId == senderClientId)
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Traverse.Create(StartOfRound.Instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
+                    Log.LogError($"[PlayerLoadedServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
                 }
-                else
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (clientId != senderClientId)
                 {
-                    if (StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                    {
-                        Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to call the PlayerLoaded RPC for another client.");
-                    }
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call PlayerLoadedServerRpc for another client.");
+                    return;
                 }
+
+                Traverse.Create(StartOfRound.Instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
             }
 
             public void SendNewPlayerValuesServerRpc(ulong newPlayerSteamId, PlayerControllerB instance, ServerRpcParams serverRpcParams)
