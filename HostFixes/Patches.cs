@@ -24,6 +24,20 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
+        class PlayerLeave
+        {
+            public static void Prefix()
+            {
+                if (hostingLobby)
+                {
+                    playerSteamNames.Clear();
+                    hostingLobby = false;
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(HUDManager), "AddPlayerChatMessageClientRpc")]
         class AddPlayerChatMessageClientRpc_Patch
         {
