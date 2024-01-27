@@ -39,6 +39,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configExperimentalChanges;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
+        private static List<ulong> connectedPlayerSteamIds = [];
 
         public static Plugin Instance { get; private set; }
 
@@ -116,9 +117,17 @@ namespace HostFixes
 
             internal static void ConnectionCleanup(Lobby _, Friend member)
             {
-                if (hostingLobby && !playerSteamNames.Remove(member.Id.Value))
+                if (hostingLobby)
                 {
-                    Log.LogError($"{member.Id.Value} was not in the connection list.");
+                    if (!playerSteamNames.Remove(member.Id.Value))
+                    {
+                        Log.LogError($"{member.Id.Value} was not in the connection list.");
+                    }
+
+                    if (!connectedPlayerSteamIds.Remove(member.Id.Value))
+                    {
+                        Log.LogWarning($"Player with SteamId ({member.Id.Value}) disconnected without sending player data. Sometimes it is a loading issue.");
+                    }
                 }
             }
 
@@ -546,21 +555,35 @@ namespace HostFixes
 
             public void SendNewPlayerValuesServerRpc(ulong newPlayerSteamId, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SendNewPlayerValuesServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SendNewPlayerValuesServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (instance.actualClientId == clientId)
-                {
-                    Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
-                }
-                else
+                if (instance.actualClientId != senderClientId)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({instance.playerUsername}) tried to call SendNewPlayerValuesServerRpc on another player.");
+                    return;
                 }
+
+                if (!GameNetworkManager.Instance.disableSteam)
+                {
+                    if (connectedPlayerSteamIds.Contains(newPlayerSteamId))
+                    {
+                        Log.LogWarning($"A player tried to send the SteamId of someone that is already connected.");
+                        NetworkManager.Singleton.DisconnectClient(senderClientId);
+                        return;
+                    }
+
+                    if (GameNetworkManager.Instance.steamIdsInLobby.Contains(newPlayerSteamId))
+                    {
+                        connectedPlayerSteamIds.Add(newPlayerSteamId);
+                    }
+                }
+
+                Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
             }
 
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
