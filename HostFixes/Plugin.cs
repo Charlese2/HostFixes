@@ -640,6 +640,93 @@ namespace HostFixes
                 }
             }
 
+            public void ShootGunServerRpc(Vector3 shotgunPosition, Vector3 shotgunForward, ShotgunItem instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[ShootGunServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (Vector3.Distance(instance.transform.position, shotgunPosition) > 5f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to shoot shotgun from too far away from shotgun position.");
+                    return;
+                }
+
+                if (instance.shellsLoaded < 1)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to shoot shotgun with no ammo.");
+                    return;
+                }
+
+                instance.ShootGunClientRpc(shotgunPosition, shotgunForward);
+            }
+
+            public void ReloadGunEffectsServerRpc(bool start, ShotgunItem instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[ReloadGunEffectsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                int ammoInInventorySlot = Traverse.Create(instance).Method("FindAmmoInInventory").GetValue<int>();
+                Log.LogDebug($"Player #{SenderPlayerId} ({player.playerUsername}) Shotgun ammo in inventory Slot ({ammoInInventorySlot})");
+
+                if (ammoInInventorySlot == -1)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to reload shotgun with no ammo.");
+                    return;
+                }
+
+                instance.shellsLoaded++;
+                instance.ReloadGunEffectsServerRpc(start);
+            }
+
+            public void GrabObjectServerRpc(NetworkObjectReference grabbedObject, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[GrabObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
+                PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (sendingPlayer.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to pickup an object while they are dead on the server.");
+                    return;
+                }
+
+                try
+                {
+                    GameObject grabbedGameObject = (GameObject)grabbedObject;
+                    float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
+                    if (distanceToObject > instance.grabDistance * 2)
+                    {
+                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
+                        Traverse.Create(instance).Method("GrabObjectClientRpc", [false, grabbedObject]).GetValue();
+                        return;
+                    }
+                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
+                }
+                catch (Exception e)
+                {
+                    Log.LogError($"Couldn't do grab distance check. Exception: {e}");
+                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
+                }
+            }
+
             public void SetShipLightsServerRpc(bool setLightsOn, ServerRpcParams serverRpcParams)
             {
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
@@ -688,6 +775,97 @@ namespace HostFixes
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) sent signal translator message: ({signalMessage})");
                 }
                 HUDManager.Instance.UseSignalTranslatorServerRpc(signalMessage);
+            }
+
+            public void TeleportPlayerServerRpc(int playerObj, EntranceTeleport instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[TeleportPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (clientId == 0)
+                {
+                    instance.TeleportPlayerServerRpc(playerObj);
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (playerObj != SenderPlayerId)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to teleport another player using an entrance teleport)");
+                    return;
+                }
+
+                float distanceFromDoor = Vector3.Distance(instance.entrancePoint.position, player.transform.position);
+
+                if (distanceFromDoor > 10f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) too far away from entrance to teleport ({distanceFromDoor})");
+                    return;
+                }
+
+                Transform exitPoint = Traverse.Create(instance).Field("exitPoint").GetValue<Transform>();
+
+                if (exitPoint == null)
+                {
+                    instance.FindExitPoint();
+                    exitPoint = Traverse.Create(instance).Field("exitPoint").GetValue<Transform>();
+                }
+
+                playerPositions[(ulong)SenderPlayerId] = exitPoint.position;
+                instance.TeleportPlayerServerRpc(playerObj);
+            }
+
+            public void PressTeleportButtonServerRpc(ShipTeleporter instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[PressTeleportButtonServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (player.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to press teleporter button while they are dead on the server.");
+                    return;
+                }
+
+                float teleporterButtonDistance = Vector3.Distance(player.transform.position, instance.buttonTrigger.transform.position);
+                if (teleporterButtonDistance > 5f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to press teleporter button from too far away ({teleporterButtonDistance})");
+                    return;
+                }
+
+                instance.PressTeleportButtonServerRpc();
+            }
+
+            public void TeleportPlayerOutServerRpc(int playerObj, Vector3 teleportPos, ShipTeleporter instance, ServerRpcParams serverRpcParams)
+            {
+                Log.LogDebug($"[TeleportPlayerOutServerRpc] playerObj: {playerObj} teleportPos: {teleportPos}");
+
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[TeleportPlayerOutServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (playerObj != SenderPlayerId)
+                {
+                    Log.LogWarning($"[TeleportPlayerOutServerRpc] playerObj ({playerObj}) != SenderPlayerId ({SenderPlayerId})");
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                
+                playerPositions[player.playerClientId] = player.transform.localPosition;
+                instance.TeleportPlayerOutServerRpc(playerObj, teleportPos);
             }
 
             public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams serverRpcParams)
@@ -802,6 +980,266 @@ namespace HostFixes
                 {
                     Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
                 }
+            }
+
+            public void UpdateUsedByPlayerServerRpc(int playerNum, InteractTrigger instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[UpdateUsedByPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (clientId == 0)
+                {
+                    Traverse.Create(instance).Method("UpdateUsedByPlayerServerRpc", [playerNum]).GetValue();
+                    return;
+                }
+
+                if (playerNum != SenderPlayerId)
+                {
+                    Log.LogWarning($"[UpdateUsedByPlayerServerRpc] playerNum ({playerNum}) != SenderPlayerId ({SenderPlayerId})");
+                    return;
+                }
+
+                Log.LogDebug($"UpdateUsedByPlayerServerRpc #{SenderPlayerId}");
+                Traverse.Create(instance).Method("UpdateUsedByPlayerServerRpc", [playerNum]).GetValue();
+            }
+
+            public void StopUsingServerRpc(int playerUsing, InteractTrigger instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[StopUsingServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (clientId == 0)
+                {
+                    Traverse.Create(instance).Method("StopUsingServerRpc", [playerUsing]).GetValue();
+                    return;
+                }
+
+                if (playerUsing != SenderPlayerId)
+                {
+                    Log.LogWarning($"[StopUsingServerRpc] playerUsing ({playerUsing}) != SenderPlayerId ({SenderPlayerId})");
+                    return;
+                }
+
+                Log.LogDebug($"StopUsingServerRpc #{SenderPlayerId}");
+                Traverse.Create(instance).Method("StopUsingServerRpc", [playerUsing]).GetValue();
+            }
+
+            public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[UpdateAnimServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (clientId == 0)
+                {
+                    Traverse.Create(instance).Method("UpdateAnimServerRpc", [setBool, playSecondaryAudios, playerWhoTriggered]).GetValue();
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (playerWhoTriggered != SenderPlayerId)
+                {
+                    Log.LogWarning($"[UpdateAnimServerRpc] playerWhoTriggered ({playerWhoTriggered}) != SenderPlayerId ({SenderPlayerId}) ({instance.triggerAnimator.name})");
+                    return;
+                }
+
+                if (player.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with an animated object ({instance.triggerAnimator.name}) while they are dead on the server.");
+                    return;
+                }
+
+                float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[SenderPlayerId].transform.position);
+                if (Vector3.Distance( instance.transform.position, player.transform.position) > 5f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
+                    return;
+                }
+
+                Traverse.Create(instance).Method("UpdateAnimServerRpc", [setBool, playSecondaryAudios, playerWhoTriggered]).GetValue();
+            }
+
+            public void UpdateAnimTriggerServerRpc(AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[UpdateAnimTriggerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                Log.LogDebug($"UpdateAnimTriggerServerRpc #{SenderPlayerId}");
+                Traverse.Create(instance).Method("UpdateAnimTriggerServerRpc").GetValue();
+            }
+
+            public void SyncAllPlayerLevelsServerRpc(int newPlayerLevel, int playerClientId, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SyncAllPlayerLevelsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (playerClientId != SenderPlayerId)
+                {
+                    Log.LogWarning($"[SyncAllPlayerLevelsServerRpc] playerClientId ({playerClientId}) != SenderPlayerId ({SenderPlayerId})");
+                    return;
+                }
+
+                HUDManager.Instance.SyncAllPlayerLevelsServerRpc(newPlayerLevel, playerClientId);
+            }
+
+            public void StartGameServerRpc(StartOfRound instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[StartGameServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (player.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to start the game while they are dead on the server.");
+                    return;
+                }
+
+                StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
+                float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
+                if (distanceToLever > 5f)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to start the game while too far away ({distanceToLever}).");
+                    return;
+                }
+
+                instance.StartGameServerRpc();
+            }
+
+            public void SyncAlreadyHeldObjectsServerRpc(int joiningClientId, StartOfRound instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SyncAlreadyHeldObjectsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                instance.SyncAlreadyHeldObjectsServerRpc(joiningClientId);
+            }
+
+            public void SyncShipUnlockablesServerRpc(StartOfRound instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SyncShipUnlockablesServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                try
+                {
+                    PlaceableShipObject[] placeableShipObjects = [.. FindObjectsOfType<PlaceableShipObject>().OrderBy(x => x.unlockableID)];
+
+                    for (int i = 0; i < placeableShipObjects.Length; i++)
+                    {
+                        if (placeableShipObjects[i].parentObject == null)
+                        {
+                            Log.LogError($"Player #{SenderPlayerId} ({player.playerUsername}) PlaceableShipObject ({placeableShipObjects[i].name}) parent is null. Crash Prevented. ");
+                            return;
+                        }
+                    }
+
+                }
+                catch (Exception e)
+                {
+                    Log.LogError(e);
+                    return;
+                }
+
+                instance.SyncShipUnlockablesServerRpc();
+            }
+
+            public void SetPatienceServerRpc(float valueChange, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SetPatienceServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (clientId != 0)
+                {
+                    return;
+                }
+
+                instance.SetPatienceServerRpc(valueChange);
+            }
+
+            public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[CheckAnimationGrabPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (playerID != SenderPlayerId)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried spoofing CheckAnimationGrabPlayerServerRpc on another player.");
+                    return;
+                }
+
+                instance.CheckAnimationGrabPlayerServerRpc(monsterAnimationID, playerID);
+            }
+
+            public void AttackPlayersServerRpc(DepositItemsDesk instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[AttackPlayersServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (clientId != 0)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling AttackPlayersServerRpc.");
+                    return;
+                }
+
+                instance.AttackPlayersServerRpc();
+            }
+
+            public void ChangeEnemyOwnerServerRpc(ulong clientId, EnemyAI instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                instance.ChangeEnemyOwnerServerRpc(clientId);
             }
         }
 
@@ -1292,6 +1730,111 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
+            class ShootGunServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShotgunItem), "__rpc_handler_1329927282")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ShootGunServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ShootGunServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch ShootGunServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class ReloadGunEffectsServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShotgunItem), "__rpc_handler_3349119596")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ReloadGunEffectsServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ReloadGunEffectsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch ReloadGunEffectsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class GrabObjectServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_1554282707")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "GrabObjectServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.GrabObjectServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch GrabObjectServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
             class SetShipLightsServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(ShipLights), "__rpc_handler_1625678258")]
@@ -1388,6 +1931,111 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch UpdatePlayerPositionServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class TeleportPlayerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(EntranceTeleport), "__rpc_handler_4279190381")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "TeleportPlayerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.TeleportPlayerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch TeleportPlayerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PressTeleportButtonServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipTeleporter), "__rpc_handler_389447712")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PressTeleportButtonServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PressTeleportButtonServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PressTeleportButtonServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class TeleportPlayerOutServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipTeleporter), "__rpc_handler_3033548568")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "TeleportPlayerOutServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.TeleportPlayerOutServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch TeleportPlayerOutServerRpc");
                     }
 
                     return codes.AsEnumerable();
@@ -1493,6 +2141,425 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch UpdatePlayerAnimationServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdateUsedByPlayerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(InteractTrigger), "__rpc_handler_1430497838")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdateUsedByPlayerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdateUsedByPlayerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdateUsedByPlayerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class StopUsingServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(InteractTrigger), "__rpc_handler_880620475")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "StopUsingServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.StopUsingServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch StopUsingServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdateAnimServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(AnimatedObjectTrigger), "__rpc_handler_1461767556")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdateAnimServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdateAnimServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdateAnimServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class UpdateAnimTriggerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(AnimatedObjectTrigger), "__rpc_handler_2219526317")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdateAnimTriggerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.UpdateAnimTriggerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch UpdateAnimTriggerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SyncAllPlayerLevelsServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(HUDManager), "__rpc_handler_4217433937")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncAllPlayerLevelsServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation + 0, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncAllPlayerLevelsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SyncAllPlayerLevelsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class StartGameServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_1089447320")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "StartGameServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.StartGameServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch StartGameServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SyncAlreadyHeldObjectsServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_682230258")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncAlreadyHeldObjectsServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncAlreadyHeldObjectsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SyncAlreadyHeldObjectsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SyncShipUnlockablesServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_744998938")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncShipUnlockablesServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SyncShipUnlockablesServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SetPatienceServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_892728304")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetPatienceServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SetPatienceServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SetPatienceServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class CheckAnimationGrabPlayerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_1392297385")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "CheckAnimationGrabPlayerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.CheckAnimationGrabPlayerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch CheckAnimationGrabPlayerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class AttackPlayersServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_3230280218")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "AttackPlayersServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.AttackPlayersServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch AttackPlayersServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class ChangeEnemyOwnerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(EnemyAI), "__rpc_handler_3587030867")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ChangeEnemyOwnerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeEnemyOwnerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch ChangeEnemyOwnerServerRpc");
                     }
 
                     return codes.AsEnumerable();
