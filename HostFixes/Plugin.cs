@@ -848,7 +848,6 @@ namespace HostFixes
 
             public void TeleportPlayerOutServerRpc(int playerObj, Vector3 teleportPos, ShipTeleporter instance, ServerRpcParams serverRpcParams)
             {
-                Log.LogDebug($"[TeleportPlayerOutServerRpc] playerObj: {playerObj} teleportPos: {teleportPos}");
 
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
@@ -909,8 +908,6 @@ namespace HostFixes
                     }
                     if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2)
                     {
-                        Log.LogDebug(instance.playerUsername);
-                        Log.LogDebug(Vector3.Distance(newPos, instance.transform.localPosition));
                         Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
                         if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
                         {
@@ -1003,7 +1000,6 @@ namespace HostFixes
                     return;
                 }
 
-                Log.LogDebug($"UpdateUsedByPlayerServerRpc #{SenderPlayerId}");
                 Traverse.Create(instance).Method("UpdateUsedByPlayerServerRpc", [playerNum]).GetValue();
             }
 
@@ -1028,7 +1024,6 @@ namespace HostFixes
                     return;
                 }
 
-                Log.LogDebug($"StopUsingServerRpc #{SenderPlayerId}");
                 Traverse.Create(instance).Method("StopUsingServerRpc", [playerUsing]).GetValue();
             }
 
@@ -1080,7 +1075,6 @@ namespace HostFixes
                     return;
                 }
 
-                Log.LogDebug($"UpdateAnimTriggerServerRpc #{SenderPlayerId}");
                 Traverse.Create(instance).Method("UpdateAnimTriggerServerRpc").GetValue();
             }
 
