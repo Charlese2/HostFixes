@@ -408,6 +408,7 @@ namespace HostFixes
                 if (clientId == 0 ||
                     chatMessage.Equals($"{username} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername} joined the ship.") ||
+                    chatMessage.Equals($"{steamUsername}... joined the ship.") ||
                     chatMessage.Equals($"{username} was left behind."))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
