@@ -645,9 +645,16 @@ namespace HostFixes
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[GrabObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetShipLightsServerRpc] Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
+                if (clientId == 0)
+                {
+                    StartOfRound.Instance.shipRoomLights.SetShipLightsServerRpc(setLightsOn);
+                    return;
+                }
+
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
