@@ -318,13 +318,13 @@ namespace HostFixes
 
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
             {
-                string sanitizedChatMessage;
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-
                 if (string.IsNullOrEmpty(chatMessage))
                 {
                     return;
                 }
+
+                string sanitizedChatMessage;
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
 
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
@@ -336,6 +336,12 @@ namespace HostFixes
                 if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
                     Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
+                    return;
+                }
+
+                if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried sending a chat message while they are dead on the server.");
                     return;
                 }
 
