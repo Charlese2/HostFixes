@@ -14,6 +14,7 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using Unity.Netcode;
 using UnityEngine;
+using Vector3 = UnityEngine.Vector3;
 
 namespace HostFixes
 {
@@ -28,7 +29,7 @@ namespace HostFixes
         internal static Dictionary<ulong, Vector3> playerPositions = [];
         internal static Dictionary<ulong, bool> allowedMovement = [];
         internal static Dictionary<ulong, bool> onShip = [];
-        internal static float positionCacheUpdateTime = 0;
+        internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
         internal static bool terminalSoundPlaying;
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
@@ -64,7 +65,6 @@ namespace HostFixes
         private void UpdatePlayerPositionCache()
         {
             if (NetworkManager.Singleton?.IsHost == false || StartOfRound.Instance == null) return;
-            positionCacheUpdateTime = Time.time;
 
             foreach (PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
             {
@@ -73,6 +73,7 @@ namespace HostFixes
                     return;
                 }
                 playerPositions[player.playerClientId] = player.transform.localPosition;
+                positionCacheUpdateTime[player.playerClientId] = Time.time;
             }
         }
 
@@ -509,11 +510,11 @@ namespace HostFixes
                     return;
                 }
 
-                var lever = FindFirstObjectByType<StartMatchLever>();
-                if (Vector3.Distance(lever.transform.position, player.transform.position) > 5f)
+                StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
+                float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
+                if (distanceToLever > 5f)
                 {
-                    float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end game while too far away ({distanceToLever}).");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end the game while too far away ({distanceToLever}).");
                     return;
                 }
 
@@ -579,11 +580,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (Vector3.Distance(sendingPlayer.transform.position, instance.transform.position) > 10f
-                    && Physics.Raycast(sendingPlayer.transform.position, instance.transform.position - sendingPlayer.transform.position, out RaycastHit hit, 100f)
-                    && hit.transform != instance.transform)
+                if (Vector3.Distance(sendingPlayer.transform.position, instance.transform.position) > 10f)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) from too far away and out of line of sight.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) from too far away.");
                     return;
                 }
 
@@ -595,7 +594,7 @@ namespace HostFixes
 
                 if (playerWhoHit == SenderPlayerId)
                 {
-                    if (configLogPvp.Value) Log.LogWarning($"Player #{SenderPlayerId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage");
+                    if (configLogPvp.Value) Log.LogWarning($"Player #{SenderPlayerId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage.");
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
                 }
                 else if (playerWhoHit == 0 && instance.playerClientId == (uint)SenderPlayerId)
@@ -674,26 +673,33 @@ namespace HostFixes
 
                 try
                 {
-                    if (onShip[instance.playerClientId] != inElevator)
+                    if (!onShip.TryGetValue(instance.playerClientId, out bool isOnShip) || isOnShip != inElevator)
                     {
                         playerPositions[instance.playerClientId] = instance.transform.localPosition;
+                        positionCacheUpdateTime[instance.playerClientId] = Time.time;
                         onShip[instance.playerClientId] = inElevator;
                     }
 
-                    float timeSinceLast = Time.time - positionCacheUpdateTime;
+                    float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
 
                     float downwardDotProduct = Vector3.Dot((newPos - instance.transform.localPosition).normalized, Vector3.down);
-                    float maxSpeed = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f));
-                    if (downwardDotProduct > 0.3f)
+                    float maxDistancePerTick = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
+                    if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || instance.isInHangarShipRoom)
                     {
                         Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                         return;
                     }
-
-                    if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > (maxSpeed * timeSinceLast) + 1)
+                    if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2)
                     {
-                        Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, 1f);
-                        MovementAllowed(instance.playerClientId, false);
+                        Log.LogDebug(instance.playerUsername);
+                        Log.LogDebug(Vector3.Distance(newPos, instance.transform.localPosition));
+                        Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
+                        if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
+                        {
+                            MovementAllowed(instance.playerClientId, false);
+                            return;
+                        }
+
                         Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                         return;
                     }
@@ -701,9 +707,9 @@ namespace HostFixes
                     MovementAllowed(instance.playerClientId, true);
                     Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                 }
-                catch
+                catch (Exception e)
                 {
-                    onShip[instance.playerClientId] = inElevator;
+                    Log.LogError(e);
                     Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                 }
             }
@@ -746,8 +752,10 @@ namespace HostFixes
                 {
                     if (!allowedMovement[instance.playerClientId])
                     {
+                        Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [-1437577361/*Standing Still Anim Hash*/, -1f]).GetValue();
                         return;
                     }
+
                     Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
                 }
                 catch
