@@ -6,6 +6,7 @@ using HarmonyLib;
 using Steamworks;
 using Steamworks.Data;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -28,12 +29,17 @@ namespace HostFixes
         internal static Dictionary<ulong, bool> allowedMovement = [];
         internal static Dictionary<ulong, bool> onShip = [];
         internal static float positionCacheUpdateTime = 0;
+        internal static bool terminalSoundPlaying;
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
         private static ConfigEntry<bool> configExperimentalChanges;
+
+        private static Dictionary<int, bool> playerMovedShipObject = [];
+
+        public static Plugin Instance { get; private set; }
 
         private void Awake()
         {
@@ -52,6 +58,7 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
+            Instance ??= this;
         }
 
         private void UpdatePlayerPositionCache()
@@ -80,6 +87,20 @@ namespace HostFixes
             {
                 allowedMovement[playerId] = true;
             }
+        }
+
+        internal static IEnumerator TerminalSoundCooldown()
+        {
+            terminalSoundPlaying = true;
+            yield return new WaitForSeconds(1f);
+            terminalSoundPlaying = false;
+        }
+
+        private static IEnumerator PlaceShipObjectCooldown(int player)
+        {
+            playerMovedShipObject[player] = true;
+            yield return new WaitForSeconds(1f);
+            playerMovedShipObject[player] = false;
         }
 
         internal class ConnectionEvents
@@ -186,6 +207,14 @@ namespace HostFixes
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted credit value: {newGroupCredits} Old credit value: {instance.groupCredits}");
                 }
+            }
+
+            public void PlayTerminalAudioServerRpc(int clipIndex,Terminal instance)
+            {
+                if (terminalSoundPlaying) return;
+
+                Instance.StartCoroutine(TerminalSoundCooldown());
+                instance.PlayTerminalAudioServerRpc(clipIndex);
             }
 
             public void BuyShipUnlockableServerRpc(int unlockableID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
@@ -408,9 +437,13 @@ namespace HostFixes
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetShipLeaveEarlyServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PlaceShipObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
+                if (playerMovedShipObject.TryGetValue(SenderPlayerId, out bool moved) && moved == true) return;
+
+                Instance.StartCoroutine(PlaceShipObjectCooldown(SenderPlayerId));
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
@@ -790,6 +823,40 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SyncGroupCreditsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PlayTerminalAudioServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(Terminal), "__rpc_handler_1713627637")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayTerminalAudioServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.PlayTerminalAudioServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayTerminalAudioServerRpc");
                     }
 
                     return codes.AsEnumerable();
