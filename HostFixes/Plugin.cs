@@ -1156,7 +1156,7 @@ namespace HostFixes
                     {
                         if (placeableShipObjects[i].parentObject == null)
                         {
-                            Log.LogError($"Player #{SenderPlayerId} ({player.playerUsername}) PlaceableShipObject ({placeableShipObjects[i].name}) parent is null. Crash Prevented. ");
+                            Log.LogError($"Player #{SenderPlayerId} ({player.playerUsername}) PlaceableShipObject #{placeableShipObjects[i].unlockableID} ({placeableShipObjects[i].name}) parent is null. Crash Prevented. ");
                             return;
                         }
                     }
@@ -1236,6 +1236,42 @@ namespace HostFixes
                 }
 
                 instance.ChangeEnemyOwnerServerRpc(clientId);
+            }
+        }
+
+        [HarmonyPatch]
+        class Fix_SyncShipUnlockablesServerRpc_Crash
+        {
+            [HarmonyPatch(typeof(StartOfRound), "SyncAlreadyHeldObjectsServerRpc")]
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> RedirectLocalCallToPluginRpc(IEnumerable<CodeInstruction> instructions)
+            {
+                bool found = false;
+                List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc", ReflectedType.Name: "StartOfRound" })
+                    {
+                        if(codes.Count > 1000)
+                        {
+                            throw new Exception("Stuck in infinite loop while patching.");
+                        }
+
+                        int callLocation = i;
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldloc, 12));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.SyncShipUnlockablesServerRpc));
+
+                        found = true;
+                    }
+                }
+
+                if (!found)
+                {
+                    Log.LogError("Could not patch BuyItemsServerRpc");
+                }
+
+                return codes.AsEnumerable();
             }
         }
 
