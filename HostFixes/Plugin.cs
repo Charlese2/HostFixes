@@ -572,9 +572,11 @@ namespace HostFixes
                     return;
                 }
 
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
                 if (instance.actualClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({instance.playerUsername}) tried to call SendNewPlayerValuesServerRpc on another player.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call SendNewPlayerValuesServerRpc with input value ({newPlayerSteamId}) on player #{instance.playerClientId} ({instance.playerUsername}).");
                     return;
                 }
 
