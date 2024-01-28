@@ -11,20 +11,6 @@ namespace HostFixes
     {
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
-        class LeaveCurrentSteamLobby_Patch
-        {
-            public static void Prefix()
-            {
-                if (hostingLobby)
-                {
-                    playerSteamNames.Clear();
-                    hostingLobby = false;
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
         class PlayerLeave
         {
             public static void Prefix()
@@ -32,6 +18,7 @@ namespace HostFixes
                 if (hostingLobby)
                 {
                     playerSteamNames.Clear();
+                    connectedPlayerSteamIds.Clear();
                     hostingLobby = false;
                 }
             }

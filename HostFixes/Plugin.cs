@@ -31,6 +31,7 @@ namespace HostFixes
         internal static Dictionary<ulong, bool> onShip = [];
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
         internal static bool terminalSoundPlaying;
+        internal static List<ulong> connectedPlayerSteamIds = [];
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
@@ -39,7 +40,6 @@ namespace HostFixes
         private static ConfigEntry<bool> configExperimentalChanges;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
-        private static List<ulong> connectedPlayerSteamIds = [];
 
         public static Plugin Instance { get; private set; }
 
