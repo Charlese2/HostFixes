@@ -1,5 +1,7 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
+using Netcode.Transports.Facepunch;
+using Steamworks.Data;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -10,16 +12,103 @@ namespace HostFixes
     internal class Patches
     {
         [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(FacepunchTransport), "Steamworks.ISocketManager.OnConnecting")]
+        class Identity_Fix
+        {
+            public static void Prefix(ref Connection connection, ref ConnectionInfo info)
+            {
+                NetIdentity identity = Traverse.Create(info).Field<NetIdentity>("identity").Value;
+                steamIdtoConnectionIdMap[identity.SteamId.Value] = connection.Id;
+                connectionIdtoSteamIdMap[connection.Id] = identity.SteamId.Value;
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(FacepunchTransport), "Steamworks.ISocketManager.OnDisconnected")]
+        class SteamIdDictionary_Cleanup
+        {
+            public static void Prefix(ref Connection connection, ref ConnectionInfo info)
+            {
+                NetIdentity identity = Traverse.Create(info).Field<NetIdentity>("identity").Value;
+                if (!steamIdtoConnectionIdMap.Remove(identity.SteamId.Value))
+                {
+                    Log.LogError($"steamId: ({identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
+                }
+
+                if (!connectionIdtoSteamIdMap.Remove(connection.Id))
+                {
+                    Log.LogError($"steamId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(NetworkConnectionManager), "OnClientDisconnectFromServer")]
+        class ClientIdToSteamId_Cleanup
+        {
+            public static void Prefix(ulong clientId)
+            {
+                if (NetworkManager.Singleton.IsHost)
+                {
+                    if (clientIdToSteamIdMap.TryGetValue(clientId, out ulong steamId))
+                    {
+                        if (!steamIdtoClientIdMap.Remove(steamId))
+                        {
+                            Log.LogError($"({steamId}) was not in steamIdtoClientIdMap.");
+                        }
+
+                        clientIdToSteamIdMap.Remove(clientId);
+                    }
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
+        [HarmonyPriority(Priority.Last)]
+        class MapSteamIdToClientId
+        {
+            public static void Postfix(GameNetworkManager __instance, ref NetworkManager.ConnectionApprovalRequest request, ref NetworkManager.ConnectionApprovalResponse response)
+            {
+                if (!GameNetworkManager.Instance.disableSteam)
+                {
+                    NetworkConnectionManager networkConnectionManager = Traverse.Create(NetworkManager.Singleton).Field("ConnectionManager").GetValue<NetworkConnectionManager>();
+                    ulong transportId = Traverse.Create(networkConnectionManager).Method("ClientIdToTransportId", [request.ClientNetworkId]).GetValue<ulong>();
+
+                    if (connectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
+                    {
+                        steamIdtoClientIdMap[steamId] = request.ClientNetworkId;
+                        clientIdToSteamIdMap[request.ClientNetworkId] = steamId;
+
+                        if (response?.Approved == true && StartOfRound.Instance.KickedClientIds.Contains(steamId))
+                        {
+                            response.Reason = "You cannot rejoin after being kicked.";
+                            response.Approved = false;
+                            Log.LogWarning($"A player tried to force rejoin after being kicked. steamId: ({steamId})");
+                        }
+                    }
+                    else
+                    {
+                        Log.LogError($"Could not get steam id from transportId ({transportId})");
+                    }
+                }
+            }
+        }
+
+
+        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
-        class PlayerLeave
+        class HostCleanup
         {
             public static void Prefix()
             {
-                if (hostingLobby)
+                if (NetworkManager.Singleton.IsHost)
                 {
                     playerSteamNames.Clear();
-                    connectedPlayerSteamIds.Clear();
-                    hostingLobby = false;
+                    steamIdtoConnectionIdMap.Clear();
+                    connectionIdtoSteamIdMap.Clear();
+                    steamIdtoClientIdMap.Clear();
+                    clientIdToSteamIdMap.Clear();
                 }
             }
         }

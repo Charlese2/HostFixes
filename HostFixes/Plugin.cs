@@ -24,14 +24,16 @@ namespace HostFixes
         internal static ManualLogSource Log;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
         internal static CompatibleNoun[] moons;
-        internal static bool hostingLobby;
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
         internal static Dictionary<ulong, bool> allowedMovement = [];
         internal static Dictionary<ulong, bool> onShip = [];
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
+        internal static Dictionary<ulong, uint> steamIdtoConnectionIdMap = [];
+        internal static Dictionary<uint, ulong> connectionIdtoSteamIdMap = [];
+        internal static Dictionary<ulong, ulong> steamIdtoClientIdMap = [];
+        internal static Dictionary<ulong, ulong> clientIdToSteamIdMap = [];
         internal static bool terminalSoundPlaying;
-        internal static List<ulong> connectedPlayerSteamIds = [];
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
         private static ConfigEntry<bool> configDisablePvpInShip;
@@ -109,7 +111,7 @@ namespace HostFixes
         {
             internal static void ConnectionAttempt(Lobby _, Friend member)
             {
-                if (hostingLobby && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
+                if (NetworkManager.Singleton.IsHost && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
                     Log.LogError($"{member.Id.Value} is already in the connection list.");
                 }
@@ -117,26 +119,31 @@ namespace HostFixes
 
             internal static void ConnectionCleanup(Lobby _, Friend member)
             {
-                if (hostingLobby)
+                if (NetworkManager.Singleton.IsHost)
                 {
                     if (!playerSteamNames.Remove(member.Id.Value))
                     {
-                        Log.LogError($"{member.Id.Value} was not in the connection list.");
+                        Log.LogError($"({member.Id.Value}) was not in the connection list.");
                     }
 
-                    if (!connectedPlayerSteamIds.Remove(member.Id.Value))
+                    if (!GameNetworkManager.Instance.steamIdsInLobby.Remove(member.Id.Value))
                     {
-                        Log.LogWarning($"Player with SteamId ({member.Id.Value}) disconnected without sending player data. Sometimes it is a loading issue.");
+                        Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
                     }
                 }
             }
 
             internal static void LobbyCreated(Result result, Lobby lobby)
             {
-                hostingLobby = true;
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
                     Log.LogError($"{lobby.Owner.Id.Value} is already in the connection list.");
+                }
+
+                if (result == Result.OK)
+                {
+                    steamIdtoClientIdMap[lobby.Owner.Id.Value] = 0;
+                    clientIdToSteamIdMap[0] = lobby.Owner.Id.Value;
                 }
             }
         }
@@ -573,29 +580,30 @@ namespace HostFixes
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-
                 if (instance.actualClientId != senderClientId)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call SendNewPlayerValuesServerRpc with input value ({newPlayerSteamId}) on player #{instance.playerClientId} ({instance.playerUsername}).");
                     return;
                 }
 
-                if (!GameNetworkManager.Instance.disableSteam)
+                if (GameNetworkManager.Instance.disableSteam)
                 {
-                    if (connectedPlayerSteamIds.Contains(newPlayerSteamId))
-                    {
-                        Log.LogWarning($"A player tried to send the SteamId of someone that is already connected.");
-                        NetworkManager.Singleton.DisconnectClient(senderClientId);
-                        return;
-                    }
-
-                    if (GameNetworkManager.Instance.steamIdsInLobby.Contains(newPlayerSteamId))
-                    {
-                        connectedPlayerSteamIds.Add(newPlayerSteamId);
-                    }
+                    Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
+                    return;
                 }
 
-                Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
+                if (!clientIdToSteamIdMap.TryGetValue(senderClientId, out ulong senderSteamId))
+                {
+                    Log.LogError($"[SendNewPlayerValuesServerRpc] Could not get steamId ({senderSteamId}) in steamIdtoClientIdMap");
+                    return;
+                }
+
+                if (senderSteamId != newPlayerSteamId)
+                {
+                    Log.LogWarning($"Client sent incorrect steamId. senderSteamId: ({senderSteamId}) newPlayerSteamId: ({newPlayerSteamId})");
+                }
+
+                Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [senderSteamId]).GetValue();
             }
 
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)

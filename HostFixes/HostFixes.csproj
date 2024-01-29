@@ -5,7 +5,6 @@
         <AssemblyName>CharlesE2.HostFixes</AssemblyName>
         <Description>Fixes for hosting a Lethal Company Lobby.</Description>
         <Version>1.0.4</Version>
-        <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
     </PropertyGroup>
@@ -23,13 +22,16 @@
 
     <ItemGroup>
       <Reference Include="Assembly-CSharp">
-        <HintPath>..\Assembly-CSharp.dll</HintPath>
+        <HintPath>lib\Assembly-CSharp.dll</HintPath>
+      </Reference>
+      <Reference Include="Facepunch Transport for Netcode for GameObjects">
+        <HintPath>lib\Facepunch Transport for Netcode for GameObjects.dll</HintPath>
       </Reference>
       <Reference Include="Facepunch.Steamworks.Win64">
         <HintPath>lib\Facepunch.Steamworks.Win64.dll</HintPath>
       </Reference>
       <Reference Include="Unity.Netcode.Runtime">
-        <HintPath>..\Unity.Netcode.Runtime.dll</HintPath>
+        <HintPath>lib\Unity.Netcode.Runtime.dll</HintPath>
       </Reference>
     </ItemGroup>
 </Project>
