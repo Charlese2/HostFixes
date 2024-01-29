@@ -373,13 +373,13 @@ namespace HostFixes
 
                 if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried sending a chat message while they are dead on the server.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried sending a chat message while they are dead on the server. Message: ({chatMessage})");
                     return;
                 }
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player. Message: ({chatMessage})");
                     return;
                 }
 
@@ -433,7 +433,7 @@ namespace HostFixes
 
                 if (!playerSteamNames.TryGetValue(steamId, out string steamUsername))
                 {
-                    Log.LogError($"Failed to get steam username from playerlist for steamId: {steamId}");
+                    Log.LogError($"Failed to get steam username from playerlist for steamId: {steamId} Message: ({chatMessage})");
                     return;
                 }
 
