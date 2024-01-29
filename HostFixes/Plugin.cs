@@ -1144,9 +1144,11 @@ namespace HostFixes
                     return;
                 }
 
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
                 if (playerClientId != SenderPlayerId)
                 {
-                    Log.LogWarning($"[SyncAllPlayerLevelsServerRpc] playerClientId ({playerClientId}) != SenderPlayerId ({SenderPlayerId})");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to temporarily set another players level.");
                     return;
                 }
 
