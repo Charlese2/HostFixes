@@ -48,6 +48,7 @@ namespace HostFixes
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
+        private static bool pressTeleportButtonOnCooldown;
 
         public static Plugin Instance { get; private set; }
 
@@ -115,6 +116,13 @@ namespace HostFixes
             buyShipUnlockableOnCooldown = true;
             yield return new WaitForSeconds(0.5f);
             buyShipUnlockableOnCooldown = false;
+        }
+
+        private static IEnumerator PressTeleportButtonCooldown()
+        {
+            pressTeleportButtonOnCooldown = true;
+            yield return new WaitForSeconds(0.5f);
+            pressTeleportButtonOnCooldown = false;
         }
 
         internal class ConnectionEvents
@@ -890,6 +898,10 @@ namespace HostFixes
                     Log.LogError($"[PressTeleportButtonServerRpc] Failed to get the playerId from clientId: {clientId}");
                     return;
                 }
+
+                if (pressTeleportButtonOnCooldown) return;
+
+                Instance.StartCoroutine(PressTeleportButtonCooldown());
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if (player.isPlayerDead)
