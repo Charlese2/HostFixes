@@ -738,15 +738,13 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
                 int ammoInInventorySlot = Traverse.Create(instance).Method("FindAmmoInInventory").GetValue<int>();
-                Log.LogDebug($"Player #{SenderPlayerId} ({player.playerUsername}) Shotgun ammo in inventory Slot ({ammoInInventorySlot})");
 
                 if (ammoInInventorySlot == -1)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to reload shotgun with no ammo.");
                     return;
                 }
 
-                instance.shellsLoaded++;
+                instance.shellsLoaded = Mathf.Clamp(instance.shellsLoaded + 1, 0, 2);
                 instance.ReloadGunEffectsServerRpc(start);
             }
 
