@@ -24,6 +24,7 @@ namespace HostFixes
         internal static ManualLogSource Log;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
         internal static CompatibleNoun[] moons;
+        internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
         internal static Dictionary<ulong, bool> allowedMovement = [];
@@ -235,6 +236,12 @@ namespace HostFixes
                 }
                 Terminal terminal = FindObjectOfType<Terminal>();
 
+                if (clientId == 0)
+                {
+                    StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
+                    return;
+                }
+
                 if (unlockableID < 0 || unlockableID >= StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to buy unlockable that is out of unlockables list. ({unlockableID}).");
@@ -243,18 +250,23 @@ namespace HostFixes
 
                 if (StartOfRound.Instance.unlockablesList.unlockables[unlockableID].alreadyUnlocked)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to unlock an unlockable twice");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) tried to unlock an unlockable multiple times");
                     return;
                 }
 
-                int unlockableCost = StartOfRound.Instance.unlockablesList.unlockables[unlockableID].shopSelectionNode.itemCost;
+                if(!unlockablePrices.TryGetValue(unlockableID, out int unlockableCost))
+                {
+                    Log.LogError($"Could not find price of ship unlockable #{unlockableID}");
+                    return;
+                }
+
                 if (clientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount for unlockable. Current credits: {terminal.groupCredits} Unlockable cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
                     return;
                 }
 
-                if (clientId == 0 || newGroupCreditsAmount < terminal.groupCredits)
+                if (newGroupCreditsAmount < terminal.groupCredits)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                 }
