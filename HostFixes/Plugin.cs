@@ -47,6 +47,7 @@ namespace HostFixes
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static bool shipLightsOnCooldown;
+        private static bool buyShipUnlockableOnCooldown;
 
         public static Plugin Instance { get; private set; }
 
@@ -107,6 +108,13 @@ namespace HostFixes
             shipLightsOnCooldown = true;
             yield return new WaitForSeconds(0.5f);
             shipLightsOnCooldown = false;
+        }
+
+        private static IEnumerator BuyShipUnlockableCooldown()
+        {
+            buyShipUnlockableOnCooldown = true;
+            yield return new WaitForSeconds(0.5f);
+            buyShipUnlockableOnCooldown = false;
         }
 
         internal class ConnectionEvents
@@ -251,6 +259,10 @@ namespace HostFixes
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                     return;
                 }
+
+                if (buyShipUnlockableOnCooldown) return;
+
+                Instance.StartCoroutine(BuyShipUnlockableCooldown());
 
                 if (unlockableID < 0 || unlockableID >= StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
