@@ -46,6 +46,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configLimitGrabDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
+        private static bool shipLightsOnCooldown;
 
         public static Plugin Instance { get; private set; }
 
@@ -99,6 +100,13 @@ namespace HostFixes
             playerMovedShipObject[player] = true;
             yield return new WaitForSeconds(1f);
             playerMovedShipObject[player] = false;
+        }
+
+        private static IEnumerator ShipLightsCooldown()
+        {
+            shipLightsOnCooldown = true;
+            yield return new WaitForSeconds(0.5f);
+            shipLightsOnCooldown = false;
         }
 
         internal class ConnectionEvents
@@ -779,6 +787,10 @@ namespace HostFixes
                     StartOfRound.Instance.shipRoomLights.SetShipLightsServerRpc(setLightsOn);
                     return;
                 }
+
+                if (shipLightsOnCooldown) return;
+
+                Instance.StartCoroutine(ShipLightsCooldown());
 
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
