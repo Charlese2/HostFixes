@@ -43,6 +43,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configExperimentalChanges;
         private static ConfigEntry<bool> configExperimentalPositionCheck;
         internal static ConfigEntry<bool> configShipObjectRotationCheck;
+        private static ConfigEntry<bool> configLimitGrabDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
 
@@ -59,6 +60,7 @@ namespace HostFixes
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
             configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
             configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
+            configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -735,6 +737,12 @@ namespace HostFixes
                 if (sendingPlayer.isPlayerDead)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to pickup an object while they are dead on the server.");
+                    return;
+                }
+
+                if (!configLimitGrabDistance.Value)
+                {
+                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
                     return;
                 }
 
