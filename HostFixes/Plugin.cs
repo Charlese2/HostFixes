@@ -40,6 +40,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
         private static ConfigEntry<bool> configExperimentalChanges;
+        private static ConfigEntry<bool> configExperimentalPositionCheck;
         internal static ConfigEntry<bool> configShipObjectRotationCheck;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
@@ -55,6 +56,7 @@ namespace HostFixes
             configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
+            configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
             configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
@@ -79,19 +81,6 @@ namespace HostFixes
                 }
                 playerPositions[player.playerClientId] = player.transform.localPosition;
                 positionCacheUpdateTime[player.playerClientId] = Time.time;
-            }
-        }
-
-        private static void MovementAllowed(ulong playerId, bool movementEnabled = true)
-        {
-            try
-            {
-                if (allowedMovement[playerId] != movementEnabled) Log.LogDebug($"Player #{playerId} ({StartOfRound.Instance.allPlayerScripts[playerId].playerUsername}) movement toggled to {movementEnabled}");
-                allowedMovement[playerId] = movementEnabled;
-            }
-            catch
-            {
-                allowedMovement[playerId] = true;
             }
         }
 
@@ -898,12 +887,6 @@ namespace HostFixes
 
             public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                if (!configExperimentalChanges.Value)
-                {
-                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
-                    return;
-                }
-
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
@@ -913,7 +896,7 @@ namespace HostFixes
 
                 if (instance.isPlayerDead)
                 {
-                    MovementAllowed(instance.playerClientId, false);
+                    allowedMovement[instance.playerClientId] = false;
                     return;
                 }
 
@@ -930,9 +913,10 @@ namespace HostFixes
 
                     float downwardDotProduct = Vector3.Dot((newPos - instance.transform.localPosition).normalized, Vector3.down);
                     float maxDistancePerTick = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
-                    if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || instance.isInHangarShipRoom)
+                    if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || !configExperimentalPositionCheck.Value)
                     {
                         Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                        allowedMovement[instance.playerClientId] = true;
                         return;
                     }
                     if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2)
@@ -940,7 +924,7 @@ namespace HostFixes
                         Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
                         if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
                         {
-                            MovementAllowed(instance.playerClientId, false);
+                            allowedMovement[instance.playerClientId] = false;
                             return;
                         }
 
@@ -948,7 +932,7 @@ namespace HostFixes
                         return;
                     }
 
-                    MovementAllowed(instance.playerClientId, true);
+                    allowedMovement[instance.playerClientId] = true;
                     Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                 }
                 catch (Exception e)
