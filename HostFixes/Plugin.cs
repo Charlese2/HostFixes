@@ -40,6 +40,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configLogSignalTranslatorMessages;
         private static ConfigEntry<bool> configLogPvp;
         private static ConfigEntry<bool> configExperimentalChanges;
+        internal static ConfigEntry<bool> configShipObjectRotationCheck;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
 
@@ -54,6 +55,7 @@ namespace HostFixes
             configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
+            configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -477,10 +479,27 @@ namespace HostFixes
                     return;
                 }
 
-                if (newRotation.x != 270f || newRotation.z != 0f)
+                if (configShipObjectRotationCheck.Value)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object with the wrong rotation.");
-                    return;
+                    try
+                    {
+                        GameObject networkObject = (GameObject)objectRef;
+                        PlaceableShipObject placeableShipObject = networkObject.GetComponentInChildren<PlaceableShipObject>() ?? throw new Exception("PlaceableShipObject Not Found");
+                        if (!Mathf.Approximately(newRotation.x, placeableShipObject.mainMesh.transform.eulerAngles.x) || !Mathf.Approximately(newRotation.z, placeableShipObject.mainMesh.transform.eulerAngles.z))
+                        {
+                            Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) z: {newRotation.z} {placeableShipObject.mainMesh.transform.eulerAngles.z}");
+                            return;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Log.LogWarning(e);
+                        if (newRotation.x != 270f || newRotation.z != 0f) //Usually true for most ship objects
+                        {
+                            Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object with the wrong rotation.");
+                            return;
+                        }
+                    }
                 }
 
                 if (!StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(newPosition))
