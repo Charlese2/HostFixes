@@ -75,7 +75,7 @@ namespace HostFixes
                     NetworkConnectionManager networkConnectionManager = Traverse.Create(NetworkManager.Singleton).Field("ConnectionManager").GetValue<NetworkConnectionManager>();
                     ulong transportId = Traverse.Create(networkConnectionManager).Method("ClientIdToTransportId", [request.ClientNetworkId]).GetValue<ulong>();
 
-                    if (connectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
+                    if (transportId != 0 && connectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
                     {
                         steamIdtoClientIdMap[steamId] = request.ClientNetworkId;
                         clientIdToSteamIdMap[request.ClientNetworkId] = steamId;
