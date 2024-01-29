@@ -191,7 +191,7 @@ namespace HostFixes
 
                 if (instance.groupCredits - cost < newGroupCredits + count && instance.groupCredits - cost > newGroupCredits - count)
                 {
-                    Log.LogWarning($"Credit value is slightly off. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+                    Log.LogWarning($"Credit value is slightly off. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} New Credit Value: {newGroupCredits}");
                     instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
                     return;
                 }
@@ -1270,7 +1270,7 @@ namespace HostFixes
             public static IEnumerable<CodeInstruction> RedirectLocalCallToPluginRpc(IEnumerable<CodeInstruction> instructions)
             {
                 bool found = false;
-                List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+                List<CodeInstruction> codes = new(instructions);
                 for (int i = 0; i < codes.Count; i++)
                 {
                     if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc", ReflectedType.Name: "StartOfRound" })
