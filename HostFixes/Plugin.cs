@@ -46,6 +46,7 @@ namespace HostFixes
         private static ConfigEntry<bool> configLimitGrabDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
+        private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
         private static bool pressTeleportButtonOnCooldown;
@@ -102,6 +103,13 @@ namespace HostFixes
             playerMovedShipObject[player] = true;
             yield return new WaitForSeconds(1f);
             playerMovedShipObject[player] = false;
+        }
+
+        private static IEnumerator ReloadGunEffectsCooldown(int player)
+        {
+            reloadGunEffectsOnCooldown[player] = true;
+            yield return new WaitForSeconds(2.5f);
+            reloadGunEffectsOnCooldown[player] = false;
         }
 
         private static IEnumerator ShipLightsCooldown()
@@ -735,7 +743,9 @@ namespace HostFixes
                     return;
                 }
 
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (reloadGunEffectsOnCooldown.TryGetValue(SenderPlayerId, out bool reloading) && reloading == true) return;
+
+                Instance.StartCoroutine(ReloadGunEffectsCooldown(SenderPlayerId));
 
                 int ammoInInventorySlot = Traverse.Create(instance).Method("FindAmmoInInventory").GetValue<int>();
 
