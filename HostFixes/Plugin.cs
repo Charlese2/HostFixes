@@ -966,11 +966,13 @@ namespace HostFixes
 
                 try
                 {
+                    bool changingParent = false;
                     if (!onShip.TryGetValue(instance.playerClientId, out bool isOnShip) || isOnShip != inElevator)
                     {
                         playerPositions[instance.playerClientId] = instance.transform.localPosition;
                         positionCacheUpdateTime[instance.playerClientId] = Time.time;
                         onShip[instance.playerClientId] = inElevator;
+                        changingParent = true;
                     }
 
                     float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
@@ -983,7 +985,7 @@ namespace HostFixes
                         allowedMovement[instance.playerClientId] = true;
                         return;
                     }
-                    if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2)
+                    if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2 && changingParent != true)
                     {
                         Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
                         if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
@@ -996,6 +998,7 @@ namespace HostFixes
                         return;
                     }
 
+                    changingParent = false;
                     allowedMovement[instance.playerClientId] = true;
                     Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                 }
