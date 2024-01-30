@@ -966,18 +966,17 @@ namespace HostFixes
 
                 try
                 {
-                    bool changingParent = false;
+                    Vector3 position = inElevator ? instance.transform.localPosition : instance.transform.position;
                     if (!onShip.TryGetValue(instance.playerClientId, out bool isOnShip) || isOnShip != inElevator)
                     {
-                        playerPositions[instance.playerClientId] = instance.transform.localPosition;
+                        playerPositions[instance.playerClientId] = position;
                         positionCacheUpdateTime[instance.playerClientId] = Time.time;
                         onShip[instance.playerClientId] = inElevator;
-                        changingParent = true;
                     }
 
                     float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
 
-                    float downwardDotProduct = Vector3.Dot((newPos - instance.transform.localPosition).normalized, Vector3.down);
+                    float downwardDotProduct = Vector3.Dot((newPos - position).normalized, Vector3.down);
                     float maxDistancePerTick = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
                     if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || !configExperimentalPositionCheck.Value)
                     {
@@ -985,9 +984,9 @@ namespace HostFixes
                         allowedMovement[instance.playerClientId] = true;
                         return;
                     }
-                    if (Vector3.Distance(newPos, instance.transform.localPosition) > maxDistancePerTick * 2 && changingParent != true)
+                    if (Vector3.Distance(newPos, position) > maxDistancePerTick * 2)
                     {
-                        Vector3 coalescePos = Vector3.MoveTowards(instance.transform.localPosition, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
+                        Vector3 coalescePos = Vector3.MoveTowards(position, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
                         if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
                         {
                             allowedMovement[instance.playerClientId] = false;
@@ -998,7 +997,6 @@ namespace HostFixes
                         return;
                     }
 
-                    changingParent = false;
                     allowedMovement[instance.playerClientId] = true;
                     Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
                 }
