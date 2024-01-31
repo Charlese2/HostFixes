@@ -30,10 +30,6 @@ namespace HostFixes
         internal static Dictionary<ulong, bool> allowedMovement = [];
         internal static Dictionary<ulong, bool> onShip = [];
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
-        internal static Dictionary<ulong, uint> steamIdtoConnectionIdMap = [];
-        internal static Dictionary<uint, ulong> connectionIdtoSteamIdMap = [];
-        internal static Dictionary<ulong, ulong> steamIdtoClientIdMap = [];
-        internal static Dictionary<ulong, ulong> clientIdToSteamIdMap = [];
         internal static bool terminalSoundPlaying;
 
         private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
@@ -52,6 +48,10 @@ namespace HostFixes
         private static bool pressTeleportButtonOnCooldown;
 
         public static Plugin Instance { get; private set; }
+        public static Dictionary<ulong, uint> SteamIdtoConnectionIdMap { get; private set; } = [];
+        public static Dictionary<uint, ulong> ConnectionIdtoSteamIdMap { get; private set; } = [];
+        public static Dictionary<ulong, ulong> SteamIdtoClientIdMap { get; private set; } = [];
+        public static Dictionary<ulong, ulong> ClientIdToSteamIdMap { get; private set; } = [];
 
         private void Awake()
         {
@@ -74,6 +74,18 @@ namespace HostFixes
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             Instance ??= this;
+        }
+
+        private void OnDestroy()
+        {
+            SteamMatchmaking.OnLobbyCreated -= ConnectionEvents.LobbyCreated;
+            SteamMatchmaking.OnLobbyMemberJoined -= ConnectionEvents.ConnectionAttempt;
+            SteamMatchmaking.OnLobbyMemberLeave -= ConnectionEvents.ConnectionCleanup;
+            CancelInvoke(nameof(UpdatePlayerPositionCache));
+            if(Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         private void UpdatePlayerPositionCache()
@@ -164,12 +176,6 @@ namespace HostFixes
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
                     Log.LogError($"{lobby.Owner.Id.Value} is already in the connection list.");
-                }
-
-                if (result == Result.OK)
-                {
-                    steamIdtoClientIdMap[lobby.Owner.Id.Value] = 0;
-                    clientIdToSteamIdMap[0] = lobby.Owner.Id.Value;
                 }
             }
         }
@@ -524,9 +530,9 @@ namespace HostFixes
                     {
                         GameObject networkObject = (GameObject)objectRef;
                         PlaceableShipObject placeableShipObject = networkObject.GetComponentInChildren<PlaceableShipObject>() ?? throw new Exception("PlaceableShipObject Not Found");
-                        if (!Mathf.Approximately(newRotation.x, placeableShipObject.mainMesh.transform.eulerAngles.x) || !Mathf.Approximately(newRotation.z, placeableShipObject.mainMesh.transform.eulerAngles.z))
+                        if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                         {
-                            Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) z: {newRotation.z} {placeableShipObject.mainMesh.transform.eulerAngles.z}");
+                            Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
                             return;
                         }
                     }
@@ -650,7 +656,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (!clientIdToSteamIdMap.TryGetValue(senderClientId, out ulong senderSteamId))
+                if (!ClientIdToSteamIdMap.TryGetValue(senderClientId, out ulong senderSteamId))
                 {
                     Log.LogError($"[SendNewPlayerValuesServerRpc] Could not get steamId ({senderSteamId}) in steamIdtoClientIdMap");
                     return;
