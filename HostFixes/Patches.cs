@@ -113,7 +113,7 @@ namespace HostFixes
         [HarmonyPatch(typeof(NetworkManager), "Awake")]
         class RegisterEvents
         {
-            public static void Prefix(NetworkManager __instance)
+            public static void Prefix()
             {
                 if (!GameNetworkManager.Instance.disableSteam)
                 {
