@@ -767,18 +767,26 @@ namespace HostFixes
                     return;
                 }
 
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
                 if (reloadGunEffectsOnCooldown.TryGetValue(SenderPlayerId, out bool reloading) && reloading == true) return;
 
                 Instance.StartCoroutine(ReloadGunEffectsCooldown(SenderPlayerId));
 
                 int ammoInInventorySlot = Traverse.Create(instance).Method("FindAmmoInInventory").GetValue<int>();
-
                 if (ammoInInventorySlot == -1)
                 {
                     return;
                 }
 
-                instance.shellsLoaded = Mathf.Clamp(instance.shellsLoaded + 1, 0, 2);
+                if (instance.shellsLoaded >= 2)
+                {
+                    return;
+                }
+
+                player.DestroyItemInSlot(ammoInInventorySlot);
+
+                instance.shellsLoaded++;
                 instance.ReloadGunEffectsServerRpc(start);
             }
 
