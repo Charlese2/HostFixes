@@ -42,6 +42,11 @@ namespace HostFixes
                     {
                         Log.LogError($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
                     }
+
+                    if (!playerSteamNames.Remove(identity.SteamId.Value))
+                    {
+                        Log.LogError($"steamId: ({identity.SteamId.Value}) was not in playerSteamNames.");
+                    }
                 }
             }
         }
@@ -127,7 +132,7 @@ namespace HostFixes
 
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(GameNetworkManager), "LeaveCurrentSteamLobby")]
+        [HarmonyPatch(typeof(NetworkManager), "OnDestroy")]
         class HostCleanup
         {
             public static void Prefix()

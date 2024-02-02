@@ -151,7 +151,7 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton.IsHost && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
-                    Log.LogError($"{member.Id.Value} is already in the connection list.");
+                    Log.LogError($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the connection list.");
                 }
             }
 
@@ -159,11 +159,6 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton.IsHost)
                 {
-                    if (!playerSteamNames.Remove(member.Id.Value))
-                    {
-                        Log.LogError($"({member.Id.Value}) was not in the connection list.");
-                    }
-
                     if (!GameNetworkManager.Instance.steamIdsInLobby.Remove(member.Id.Value))
                     {
                         Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
@@ -175,7 +170,6 @@ namespace HostFixes
             {
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
-                    Log.LogError($"{lobby.Owner.Id.Value} is already in the connection list.");
                 }
             }
         }
