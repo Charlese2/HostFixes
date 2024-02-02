@@ -44,6 +44,7 @@ namespace HostFixes
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
         private static Dictionary<int, bool> damagePlayerFromOtherClientOnCooldown = [];
+        private static List<ulong> itemOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
         private static bool pressTeleportButtonOnCooldown;
@@ -144,6 +145,13 @@ namespace HostFixes
             pressTeleportButtonOnCooldown = true;
             yield return new WaitForSeconds(0.5f);
             pressTeleportButtonOnCooldown = false;
+        }
+
+        private static IEnumerator ActivateItemCooldown(ulong itemNetworkId)
+        {
+            itemOnCooldown.Add(itemNetworkId);
+            yield return new WaitForSeconds(1f);
+            itemOnCooldown.Remove(itemNetworkId);
         }
 
         private static IEnumerator DamageOtherPlayerCooldown(int sendingPlayer)
@@ -1325,11 +1333,33 @@ namespace HostFixes
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
                 instance.ChangeEnemyOwnerServerRpc(clientId);
+            }
+
+            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (itemOnCooldown.Contains(instance.NetworkObjectId))
+                {
+                    return;
+                }
+
+                if (instance.TryGetComponent(out RemoteProp _))
+                {
+                    Instance.StartCoroutine(ActivateItemCooldown(instance.NetworkObjectId));
+                }
+
+                Traverse.Create(instance).Method("ActivateItemServerRpc", [onOff, buttonDown]).GetValue();
             }
         }
 
@@ -2682,6 +2712,41 @@ namespace HostFixes
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
                         codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ChangeEnemyOwnerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch ChangeEnemyOwnerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class ActivateItemServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(GrabbableObject), "__rpc_handler_4280509730")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ActivateItemServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRpcs).GetMethod(nameof(HostFixesServerRpcs.ActivateItemServerRpc));
                     }
                     else
                     {
