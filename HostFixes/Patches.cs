@@ -172,22 +172,6 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(ShipBuildModeManager), "Update")]
-        class PlaceShipObjectServerRpc_Patch
-        {
-            public static void Postfix(Transform ___ghostObject)
-            {
-                if (configShipObjectRotationCheck.Value)
-                {
-                    if (___ghostObject.eulerAngles.x != 270f || ___ghostObject.eulerAngles.z != 0f)
-                    {
-                        ___ghostObject.eulerAngles = new Vector3(270f, ___ghostObject.eulerAngles.y, 0f);
-                    }
-                }
-            }
-        }
-
-        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(PlayerControllerB), "SwitchToItemSlot")]
         class SwitchToItemSlot_Patch
         {
