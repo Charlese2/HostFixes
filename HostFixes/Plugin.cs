@@ -43,6 +43,7 @@ namespace HostFixes
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
+        private static Dictionary<int, bool> damagePlayerFromOtherClientOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
         private static bool pressTeleportButtonOnCooldown;
@@ -143,6 +144,13 @@ namespace HostFixes
             pressTeleportButtonOnCooldown = true;
             yield return new WaitForSeconds(0.5f);
             pressTeleportButtonOnCooldown = false;
+        }
+
+        private static IEnumerator DamageOtherPlayerCooldown(int sendingPlayer)
+        {
+            damagePlayerFromOtherClientOnCooldown[sendingPlayer] = true;
+            yield return new WaitForSeconds(0.65f);
+            damagePlayerFromOtherClientOnCooldown[sendingPlayer] = false;
         }
 
         internal class ConnectionEvents
@@ -675,6 +683,16 @@ namespace HostFixes
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
+                if (damagePlayerFromOtherClientOnCooldown.TryGetValue(SenderPlayerId, out bool onCooldown) && onCooldown == true) return;
+
+                if (playerWhoHit != SenderPlayerId)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to spoof damage from player #{playerWhoHit} on {instance.playerUsername}.");
+                    return;
+                }
+
+                Instance.StartCoroutine(DamageOtherPlayerCooldown(SenderPlayerId));
+
                 if (sendingPlayer.isPlayerDead)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) while they are dead on the server.");
@@ -687,25 +705,23 @@ namespace HostFixes
                     return;
                 }
 
+                int shovelHitForce = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include).shovelHitForce;
+
+                if (shovelHitForce == 1 && damageAmount > 10)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) for extra damage ({damageAmount})");
+                    return;
+                }
+
                 if (configDisablePvpInShip.Value && StartOfRound.Instance.shipInnerRoomBounds.bounds.Contains(instance.transform.position))
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) inside the ship.");
                     return;
                 }
 
-                if (playerWhoHit == SenderPlayerId)
-                {
-                    if (configLogPvp.Value) Log.LogWarning($"Player #{SenderPlayerId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage.");
-                    instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
-                }
-                else if (playerWhoHit == 0 && instance.playerClientId == (uint)SenderPlayerId)
-                {
-                    instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
-                }
-                else
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to spoof damage from player #{playerWhoHit} on {instance.playerUsername}.");
-                }
+                if (configLogPvp.Value) Log.LogWarning($"Player #{SenderPlayerId} ({username}) damaged ({instance.playerUsername}) for ({damageAmount}) damage.");
+
+                instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
             }
 
             public void ShootGunServerRpc(Vector3 shotgunPosition, Vector3 shotgunForward, ShotgunItem instance, ServerRpcParams serverRpcParams)
