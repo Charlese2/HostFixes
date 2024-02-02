@@ -252,7 +252,7 @@ namespace HostFixes
                 }
             }
 
-            public void PlayTerminalAudioServerRpc(int clipIndex,Terminal instance)
+            public void PlayTerminalAudioServerRpc(int clipIndex, Terminal instance)
             {
                 if (terminalSoundPlaying) return;
 
@@ -292,7 +292,7 @@ namespace HostFixes
                     return;
                 }
 
-                if(!unlockablePrices.TryGetValue(unlockableID, out int unlockableCost))
+                if (!unlockablePrices.TryGetValue(unlockableID, out int unlockableCost))
                 {
                     Log.LogError($"Could not find price of ship unlockable #{unlockableID}");
                     return;
@@ -342,7 +342,7 @@ namespace HostFixes
                     return;
                 }
 
-                    Terminal terminal = FindObjectOfType<Terminal>();
+                Terminal terminal = FindObjectOfType<Terminal>();
 
                 moons ??= terminal.terminalNodes.allKeywords[26/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
 
@@ -393,7 +393,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
+                if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Length)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player. Message: ({chatMessage})");
                     return;
@@ -944,7 +944,7 @@ namespace HostFixes
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                
+
                 playerPositions[player.playerClientId] = player.transform.localPosition;
                 instance.TeleportPlayerOutServerRpc(playerObj, teleportPos);
             }
@@ -1135,7 +1135,7 @@ namespace HostFixes
                 }
 
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[SenderPlayerId].transform.position);
-                if (Vector3.Distance( instance.transform.position, player.transform.position) > 5f)
+                if (Vector3.Distance(instance.transform.position, player.transform.position) > 5f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
                     return;

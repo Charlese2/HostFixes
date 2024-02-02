@@ -162,7 +162,7 @@ namespace HostFixes
 
                 if (!networkManager.IsHost)
                 {
-                    if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Count())
+                    if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Length)
                     {
                         return false;
                     }
@@ -213,9 +213,8 @@ namespace HostFixes
         {
             public static void Postfix(ulong clientId)
             {
-                if (votedToLeaveEarlyPlayers.Contains(clientId))
+                if (votedToLeaveEarlyPlayers.Remove(clientId))
                 {
-                    votedToLeaveEarlyPlayers.Remove(clientId);
                     TimeOfDay.Instance.votesForShipToLeaveEarly = votedToLeaveEarlyPlayers.Count;
                 }
             }
