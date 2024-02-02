@@ -691,6 +691,12 @@ namespace HostFixes
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
+                if (clientId == 0 && playerWhoHit == -1) //Lethal Escape compatibility
+                {
+                    instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
+                    return;
+                }
+
                 if (damagePlayerFromOtherClientOnCooldown.TryGetValue(SenderPlayerId, out bool onCooldown) && onCooldown == true) return;
 
                 if (playerWhoHit != SenderPlayerId)
