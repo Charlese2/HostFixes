@@ -32,14 +32,14 @@ namespace HostFixes
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
         internal static bool terminalSoundPlaying;
 
-        private static ConfigEntry<int> configMinimumVotesToLeaveEarly;
-        private static ConfigEntry<bool> configDisablePvpInShip;
-        private static ConfigEntry<bool> configLogSignalTranslatorMessages;
-        private static ConfigEntry<bool> configLogPvp;
-        private static ConfigEntry<bool> configExperimentalChanges;
-        private static ConfigEntry<bool> configExperimentalPositionCheck;
-        internal static ConfigEntry<bool> configShipObjectRotationCheck;
-        private static ConfigEntry<bool> configLimitGrabDistance;
+        public static ConfigEntry<int> configMinimumVotesToLeaveEarly;
+        public static ConfigEntry<bool> configDisablePvpInShip;
+        public static ConfigEntry<bool> configLogSignalTranslatorMessages;
+        public static ConfigEntry<bool> configLogPvp;
+        public static ConfigEntry<bool> configExperimentalChanges;
+        public static ConfigEntry<bool> configExperimentalPositionCheck;
+        public static ConfigEntry<bool> configShipObjectRotationCheck;
+        public static ConfigEntry<bool> configLimitGrabDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
