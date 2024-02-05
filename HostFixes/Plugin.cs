@@ -40,10 +40,14 @@ namespace HostFixes
         public static ConfigEntry<bool> configExperimentalPositionCheck;
         public static ConfigEntry<bool> configShipObjectRotationCheck;
         public static ConfigEntry<bool> configLimitGrabDistance;
+        public static ConfigEntry<int> configLimitShipLeverDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
         private static Dictionary<int, bool> damagePlayerFromOtherClientOnCooldown = [];
+        private static Dictionary<int, bool> startGameOnCoolown = [];
+        private static Dictionary<int, bool> endGameOnCoolown = [];
+        private static Dictionary<int, bool> shipLeverAnimationOnCooldown = [];
         private static List<ulong> itemOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
@@ -54,6 +58,9 @@ namespace HostFixes
         public static Dictionary<uint, ulong> ConnectionIdtoSteamIdMap { get; private set; } = [];
         public static Dictionary<ulong, ulong> SteamIdtoClientIdMap { get; private set; } = [];
         public static Dictionary<ulong, ulong> ClientIdToSteamIdMap { get; private set; } = [];
+
+        private static MethodInfo BeginSendClientRpc;
+        private static MethodInfo EndSendClientRpc;
 
         private void Awake()
         {
@@ -67,6 +74,7 @@ namespace HostFixes
             configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
             configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
             configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
+            configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5, "Limit distance that someone can pull the ship lever from. 0 to disable.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -76,6 +84,10 @@ namespace HostFixes
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             Instance ??= this;
+            new HostFixesServerSendRpcs();
+
+            BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
+            EndSendClientRpc = typeof(NetworkBehaviour).GetMethod("__endSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         private void OnDestroy()
@@ -159,6 +171,27 @@ namespace HostFixes
             damagePlayerFromOtherClientOnCooldown[sendingPlayer] = true;
             yield return new WaitForSeconds(0.65f);
             damagePlayerFromOtherClientOnCooldown[sendingPlayer] = false;
+        }
+
+        private static IEnumerator ShipLeverAnimationCooldown(int sendingPlayer)
+        {
+            shipLeverAnimationOnCooldown[sendingPlayer] = true;
+            yield return new WaitForSeconds(1f);
+            shipLeverAnimationOnCooldown[sendingPlayer] = false;
+        }
+
+        private static IEnumerator StartGameCooldown(int sendingPlayer)
+        {
+            startGameOnCoolown[sendingPlayer] = true;
+            yield return new WaitForSeconds(1f);
+            startGameOnCoolown[sendingPlayer] = false;
+        }
+
+        private static IEnumerator EndGameCooldown(int sendingPlayer)
+        {
+            endGameOnCoolown[sendingPlayer] = true;
+            yield return new WaitForSeconds(1f);
+            endGameOnCoolown[sendingPlayer] = false;
         }
 
         internal class ConnectionEvents
@@ -594,6 +627,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (endGameOnCoolown.TryGetValue(SenderPlayerId, out bool endGameCalledOnCooldown) && endGameCalledOnCooldown == true)
+                {
+                    Instance.StartCoroutine(EndGameCooldown(SenderPlayerId));
+                    return;
+                }
+
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if (playerClientId != SenderPlayerId)
                 {
@@ -601,15 +640,15 @@ namespace HostFixes
                     return;
                 }
 
-                if (player.isPlayerDead || !player.isPlayerControlled)
+                if (player.isPlayerDead)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to force end the game. Could be desynced from host.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end the game while dead on the server.");
                     return;
                 }
 
                 StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
                 float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
-                if (distanceToLever > 5f)
+                if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to end the game while too far away ({distanceToLever}).");
                     return;
@@ -1261,6 +1300,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (startGameOnCoolown.TryGetValue(SenderPlayerId, out bool startGameCalledOnCooldown) && startGameCalledOnCooldown == true)
+                {
+                    Instance.StartCoroutine(StartGameCooldown(SenderPlayerId));
+                    return;
+                }
+
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if (player.isPlayerDead)
                 {
@@ -1277,6 +1322,40 @@ namespace HostFixes
                 }
 
                 instance.StartGameServerRpc();
+            }
+
+            public void PlayLeverPullEffectsServerRpc(bool leverPulled, StartMatchLever instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[StartGameServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                if (shipLeverAnimationOnCooldown.TryGetValue(SenderPlayerId, out bool leverAnimationPlaying) && leverAnimationPlaying == true)
+                {
+                    Instance.StartCoroutine(ShipLeverAnimationCooldown(SenderPlayerId));
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (player.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to pull ship lever while they are dead on the server.");
+                    return;
+                }
+
+                StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
+                float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
+                if (distanceToLever > 5f)
+                {
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = new ulong[] { clientId } } };
+                    HostFixesServerSendRpcs.Instance.PlayLeverPullEffectsClientRpc(leverPulled, instance, clientRpcParams);
+                    return;
+                }
+
+                instance.PlayLeverPullEffectsServerRpc(leverPulled);
             }
 
             public void SyncAlreadyHeldObjectsServerRpc(int joiningClientId, StartOfRound instance, ServerRpcParams serverRpcParams)
@@ -1412,6 +1491,25 @@ namespace HostFixes
                 }
 
                 Traverse.Create(instance).Method("ActivateItemServerRpc", [onOff, buttonDown]).GetValue();
+            }
+        }
+
+        public class HostFixesServerSendRpcs : NetworkBehaviour
+        {
+            public static HostFixesServerSendRpcs Instance;
+            public HostFixesServerSendRpcs()
+            {
+                Instance ??= this;
+            }
+
+            public void PlayLeverPullEffectsClientRpc(bool leverPulled, StartMatchLever instance, ClientRpcParams clientRpcParams = default)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [2951629574u, clientRpcParams, RpcDelivery.Reliable]);
+                    bufferWriter.WriteValueSafe(in leverPulled, default);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 2951629574u, clientRpcParams, RpcDelivery.Reliable]);
+                }
             }
         }
 
@@ -2593,6 +2691,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch StartGameServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PlayLeverPullEffectsServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(StartMatchLever), "__rpc_handler_2406447821")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayLeverPullEffectsServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PlayLeverPullEffectsServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayLeverPullEffectsServerRpc");
                     }
 
                     return codes.AsEnumerable();
