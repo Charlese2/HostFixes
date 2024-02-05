@@ -73,6 +73,22 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(StartOfRound), "OnClientConnect")]
+        class OnClientConnect
+        {
+            public static void Postfix(StartOfRound __instance, bool __runOriginal, ulong clientId)
+            {
+                if (__instance.IsServer && clientId != 0 && !GameNetworkManager.Instance.disableSteam)
+                {
+                    if (StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int playerId))
+                    {
+                        StartOfRound.Instance.allPlayerScripts[playerId].playerSteamId = ClientIdToSteamIdMap[clientId];
+                    }
+                }
+            }
+        }
+
+        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
         [HarmonyPriority(Priority.Last)]
         class MapSteamIdToClientId
