@@ -415,7 +415,7 @@ namespace HostFixes
 
             public void AddPlayerChatMessageServerRpc(string chatMessage, int playerId, ServerRpcParams serverRpcParams)
             {
-                if (string.IsNullOrEmpty(chatMessage))
+                if (string.IsNullOrWhiteSpace(chatMessage))
                 {
                     return;
                 }
@@ -470,7 +470,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to send message as another player: ({chatMessage})");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to send message as another player #({playerId}) Message: ({chatMessage})");
                 }
             }
 
@@ -751,7 +751,7 @@ namespace HostFixes
 
                 if (senderSteamId != newPlayerSteamId)
                 {
-                    Log.LogWarning($"Client sent incorrect steamId. senderSteamId: ({senderSteamId}) newPlayerSteamId: ({newPlayerSteamId})");
+                    Log.LogWarning($"Client sent incorrect steamId. Player's steamId: ({senderSteamId}) Sent steamId: ({newPlayerSteamId})");
                 }
 
                 Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [senderSteamId]).GetValue();

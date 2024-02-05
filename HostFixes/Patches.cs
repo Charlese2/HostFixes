@@ -114,7 +114,7 @@ namespace HostFixes
                     }
                     else
                     {
-                        Log.LogError($"Could not get steamId from transportId ({transportId})");
+                        Log.LogError($"[ConnectionApproval] Could not get steamId from transportId ({transportId})");
                     }
                 }
             }
