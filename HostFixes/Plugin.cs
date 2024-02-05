@@ -567,6 +567,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (player.isPlayerDead)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to place a ship object while dead on the server.");
+                    return;
+                }
+
                 if (configShipObjectRotationCheck.Value)
                 {
                     try
@@ -1315,7 +1321,7 @@ namespace HostFixes
 
                 StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
                 float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
-                if (distanceToLever > 5f)
+                if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to start the game while too far away ({distanceToLever}).");
                     return;
@@ -1348,7 +1354,7 @@ namespace HostFixes
 
                 StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
                 float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
-                if (distanceToLever > 5f)
+                if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = new ulong[] { clientId } } };
                     HostFixesServerSendRpcs.Instance.PlayLeverPullEffectsClientRpc(leverPulled, instance, clientRpcParams);
