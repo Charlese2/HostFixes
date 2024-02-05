@@ -650,6 +650,38 @@ namespace HostFixes
                 Traverse.Create(instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
             }
 
+            public void FinishedGeneratingLevelServerRpc(ulong clientId, RoundManager instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+
+                if (senderClientId == 0)
+                {
+                    instance.FinishedGeneratingLevelServerRpc(clientId);
+                    return;
+                }
+
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[FinishedGeneratingLevelServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (clientId != senderClientId)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call FinishedGeneratingLevelServerRpc for another client.");
+                    return;
+                }
+
+                if (instance.playersFinishedGeneratingFloor.Contains(clientId))
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call FinishedGeneratingLevelServerRpc multiple times.");
+                    return;
+                }
+
+                instance.FinishedGeneratingLevelServerRpc(clientId);
+            }
+
             public void SendNewPlayerValuesServerRpc(ulong newPlayerSteamId, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1835,6 +1867,40 @@ namespace HostFixes
                 }
             }
 
+            [HarmonyPatch]
+            class FinishedGeneratingLevelServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(RoundManager), "__rpc_handler_192551691")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "FinishedGeneratingLevelServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.FinishedGeneratingLevelServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch FinishedGeneratingLevelServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
 
             [HarmonyPatch]
             class SendNewPlayerValuesServerRpc_Transpile
