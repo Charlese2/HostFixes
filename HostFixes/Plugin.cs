@@ -41,6 +41,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configShipObjectRotationCheck;
         public static ConfigEntry<bool> configLimitGrabDistance;
         public static ConfigEntry<int> configLimitShipLeverDistance;
+        public static ConfigEntry<int> configLimitTeleporterButtonDistance;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
@@ -75,6 +76,7 @@ namespace HostFixes
             configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
             configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
             configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5, "Limit distance that someone can pull the ship lever from. 0 to disable.");
+            configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5, "Limit distance that someone can press the teleporter buttton from. 0 to disable.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -1040,7 +1042,7 @@ namespace HostFixes
                 }
 
                 float teleporterButtonDistance = Vector3.Distance(player.transform.position, instance.buttonTrigger.transform.position);
-                if (teleporterButtonDistance > 5f)
+                if (configLimitTeleporterButtonDistance.Value > 1f && teleporterButtonDistance > configLimitTeleporterButtonDistance.Value)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to press teleporter button from too far away ({teleporterButtonDistance})");
                     return;
