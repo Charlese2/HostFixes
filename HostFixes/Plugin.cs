@@ -789,7 +789,7 @@ namespace HostFixes
 
                 if (playerWhoHit != SenderPlayerId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to spoof damage from player #{playerWhoHit} on {instance.playerUsername}.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to spoof ({damageAmount}) damage from player #{playerWhoHit} on ({instance.playerUsername}).");
                     return;
                 }
 
@@ -805,9 +805,9 @@ namespace HostFixes
                     return;
                 }
 
-                int shovelHitForce = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include).shovelHitForce;
+                bool shovelHitForceIsUnmodified = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include)?.shovelHitForce == 1;
 
-                if (shovelHitForce == 1 && damageAmount > 10)
+                if (shovelHitForceIsUnmodified && damageAmount > 10)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) for extra damage ({damageAmount})");
                     return;
