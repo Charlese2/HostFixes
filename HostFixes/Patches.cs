@@ -3,6 +3,7 @@ using HarmonyLib;
 using Netcode.Transports.Facepunch;
 using Steamworks;
 using Steamworks.Data;
+using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -85,6 +86,20 @@ namespace HostFixes
                         StartOfRound.Instance.allPlayerScripts[playerId].playerSteamId = ClientIdToSteamIdMap[clientId];
                     }
                 }
+            }
+        }
+
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(ManualCameraRenderer), "SyncOrderOfRadarBoostersInList")]
+        class SyncOrderFix
+        {
+            public static bool Prefix(ManualCameraRenderer __instance)
+            {
+                List<TransformAndName> players = [.. __instance.radarTargets.Where(transformAndName => transformAndName.isNonPlayer == false)];
+                List<TransformAndName> nonplayers = [.. __instance.radarTargets.Where(transformAndName => transformAndName.isNonPlayer == true).OrderBy
+                    (transformAndName => transformAndName.transform.gameObject.GetComponent<NetworkObject>().NetworkObjectId)];
+                __instance.radarTargets = Enumerable.Concat(players, nonplayers).ToList();
+                return false;
             }
         }
 
