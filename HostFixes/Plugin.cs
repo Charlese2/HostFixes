@@ -785,13 +785,13 @@ namespace HostFixes
 
                 if (damagePlayerFromOtherClientOnCooldown.TryGetValue(SenderPlayerId, out bool onCooldown) && onCooldown == true) return;
 
+                Instance.StartCoroutine(DamageOtherPlayerCooldown(SenderPlayerId));
+
                 if (playerWhoHit != SenderPlayerId)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to spoof damage from player #{playerWhoHit} on {instance.playerUsername}.");
                     return;
                 }
-
-                Instance.StartCoroutine(DamageOtherPlayerCooldown(SenderPlayerId));
 
                 if (sendingPlayer.isPlayerDead)
                 {
