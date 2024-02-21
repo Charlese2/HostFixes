@@ -452,7 +452,8 @@ namespace HostFixes
 
                 try
                 {
-                    sanitizedChatMessage = Regex.Replace(chatMessage, ">|[\\\\][nt]", ""); //Regex equates to >|[\\][nt]
+                    //Replace <> from recieved messages with () to prevent injected Text Tags.
+                    sanitizedChatMessage = Regex.Replace(chatMessage, @"<(\S+?)>", "($+)");
                 }
                 catch (Exception exception)
                 {
@@ -460,9 +461,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (string.IsNullOrEmpty(sanitizedChatMessage))
+                if (string.IsNullOrWhiteSpace(sanitizedChatMessage))
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) Chat message was empty after sanitization: ({chatMessage})");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) Chat message was empty after sanitization. Original Message: ({chatMessage})");
                     return;
                 }
 
