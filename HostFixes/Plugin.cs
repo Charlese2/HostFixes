@@ -49,6 +49,7 @@ namespace HostFixes
         private static Dictionary<int, bool> startGameOnCoolown = [];
         private static Dictionary<int, bool> endGameOnCoolown = [];
         private static Dictionary<int, bool> shipLeverAnimationOnCooldown = [];
+        private static Dictionary<int, bool> changeLevelCooldown = [];
         private static List<ulong> itemOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
@@ -194,6 +195,13 @@ namespace HostFixes
             endGameOnCoolown[sendingPlayer] = true;
             yield return new WaitForSeconds(1f);
             endGameOnCoolown[sendingPlayer] = false;
+        }
+
+        private static IEnumerator ChangeLevelCooldown(int sendingPlayer)
+        {
+            changeLevelCooldown[sendingPlayer] = true;
+            yield return new WaitForSeconds(0.25f);
+            changeLevelCooldown[sendingPlayer] = false;
         }
 
         internal class ConnectionEvents
@@ -375,6 +383,10 @@ namespace HostFixes
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
 
+                if (changeLevelCooldown.TryGetValue(SenderPlayerId, out bool changedLevel) && changedLevel == true) return;
+
+                Instance.StartCoroutine(ChangeLevelCooldown(SenderPlayerId));
+
                 if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
@@ -383,7 +395,7 @@ namespace HostFixes
 
                 if (newGroupCreditsAmount < 0)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried set credits to a negative number ({newGroupCreditsAmount}).");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to set credits to a negative number ({newGroupCreditsAmount}).");
                     return;
                 }
 
@@ -397,19 +409,27 @@ namespace HostFixes
 
                 moons ??= terminal.terminalNodes.allKeywords[26/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
 
-                int moonCost = moons[levelID].result.itemCost;
-                if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
+                try
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
-                    return;
-                }
-                else
-                {
-                    if (newGroupCreditsAmount > terminal.groupCredits)
+                    int moonCost = moons[levelID].result.itemCost;
+                    if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
-                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                        Log.LogWarning($"Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
                         return;
                     }
+                    else
+                    {
+                        if (newGroupCreditsAmount > terminal.groupCredits)
+                        {
+                            Log.LogWarning($"Player #{SenderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                            return;
+                        }
+                    }
+                }
+                catch (IndexOutOfRangeException)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) sent levelID ({levelID}) is not in the moons array.");
+                    return;
                 }
 
                 StartOfRound.Instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
