@@ -105,7 +105,6 @@ namespace HostFixes
 
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
-        [HarmonyPriority(Priority.Last)]
         class MapSteamIdToClientId
         {
             public static void Postfix(GameNetworkManager __instance, ref NetworkManager.ConnectionApprovalRequest request, ref NetworkManager.ConnectionApprovalResponse response)
@@ -120,11 +119,10 @@ namespace HostFixes
                         SteamIdtoClientIdMap[steamId] = request.ClientNetworkId;
                         ClientIdToSteamIdMap[request.ClientNetworkId] = steamId;
 
-                        if (response?.Approved == true && StartOfRound.Instance.KickedClientIds.Contains(steamId))
+                        if (StartOfRound.Instance.KickedClientIds.Contains(steamId))
                         {
                             response.Reason = "You cannot rejoin after being kicked.";
                             response.Approved = false;
-                            Log.LogWarning($"A player tried to force rejoin after being kicked. steamId: ({steamId})");
                         }
                     }
                     else
