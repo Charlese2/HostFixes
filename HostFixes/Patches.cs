@@ -77,7 +77,7 @@ namespace HostFixes
         [HarmonyPatch(typeof(StartOfRound), "OnClientConnect")]
         class OnClientConnect
         {
-            public static void Postfix(StartOfRound __instance, bool __runOriginal, ulong clientId)
+            public static void Postfix(StartOfRound __instance, ulong clientId)
             {
                 if (__instance.IsServer && clientId != 0 && !GameNetworkManager.Instance.disableSteam)
                 {
