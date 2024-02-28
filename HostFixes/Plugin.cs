@@ -1418,7 +1418,7 @@ namespace HostFixes
                     {
                         if (placeableShipObjects[i].parentObject == null)
                         {
-                            Log.LogError($"Player #{SenderPlayerId} ({player.playerUsername}) PlaceableShipObject #{placeableShipObjects[i].unlockableID} ({placeableShipObjects[i].name}) parent is null. Crash Prevented. ");
+                            Log.LogError($"PlaceableShipObject #{placeableShipObjects[i].unlockableID} ({placeableShipObjects[i].name}) parent is null. Crash Prevented.");
                             return;
                         }
                     }
