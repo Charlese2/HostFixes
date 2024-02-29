@@ -139,7 +139,7 @@ namespace HostFixes
         {
             public static void Postfix(Terminal __instance)
             {
-                unlockablePrices = __instance.terminalNodes.allKeywords[0/*Buy*/].compatibleNouns.Where(item => item.result.shipUnlockableID != -1 && item.result.itemCost != -1).ToDictionary(item => item.result.shipUnlockableID, item => item.result.itemCost);
+                Instance.StartCoroutine(TerminalAwakeWait(__instance));
             }
         }
 

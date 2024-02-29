@@ -120,6 +120,14 @@ namespace HostFixes
             }
         }
 
+        internal static IEnumerator TerminalAwakeWait(Terminal terminal)
+        {
+            yield return null;
+            unlockablePrices = terminal.terminalNodes.allKeywords[0/*Buy*/].compatibleNouns
+                .Where(item => item.result.shipUnlockableID != -1 && item.result.itemCost != -1)
+                .ToDictionary(item => item.result.shipUnlockableID, item => item.result.itemCost);
+        }
+
         internal static IEnumerator TerminalSoundCooldown()
         {
             terminalSoundPlaying = true;
