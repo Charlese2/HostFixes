@@ -938,7 +938,8 @@ namespace HostFixes
                 {
                     GameObject grabbedGameObject = (GameObject)grabbedObject;
                     float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
-                    if (distanceToObject > instance.grabDistance * 2)
+                    bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
+                    if (distanceToObject > instance.grabDistance * 2 && isNotBody)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
                         Traverse.Create(instance).Method("GrabObjectClientRpc", [false, grabbedObject]).GetValue();
@@ -949,7 +950,6 @@ namespace HostFixes
                 catch (Exception e)
                 {
                     Log.LogError($"Couldn't do grab distance check. Exception: {e}");
-                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
                 }
             }
 
