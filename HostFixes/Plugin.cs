@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
+using HostFixes.UI;
 using LobbyCompatibility.Enums;
 using LobbyCompatibility.Features;
 using Steamworks;
@@ -248,7 +249,7 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton.IsHost && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
-                    Log.LogWarning($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the playerSteamNames list.");
+                    Log.LogError($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the playerSteamNames list.");
                 }
             }
 
@@ -258,7 +259,7 @@ namespace HostFixes
                 {
                     if (!GameNetworkManager.Instance.steamIdsInLobby.Remove(member.Id.Value))
                     {
-                        Log.LogWarning($"({member.Id.Value}) already removed from steamIdsInLobby.");
+                        Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
                     }
                 }
             }
@@ -267,13 +268,14 @@ namespace HostFixes
             {
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
-                    Log.LogWarning($"Host is already in playerSteamNames.");
+                    Log.LogError($"Host is already in playerSteamNames.");
                 }
             }
         }
 
         internal static void ServerStopped(bool _)
         {
+            Log.LogEvent -= InfoPanel.Instance.Log_LogEvent;
             playerSteamNames.Clear();
             SteamIdtoConnectionIdMap.Clear();
             ConnectionIdtoSteamIdMap.Clear();
@@ -459,41 +461,26 @@ namespace HostFixes
                     return;
                 }
 
-                Terminal terminal = FindObjectOfType<Terminal>();
-
                 if (StartOfRound.Instance.allPlayerScripts[senderPlayerId].isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
-                        terminal.groupCredits,
-                        terminal.numberOfItemsInDropship,
-                        terminal.hasWarrantyTicket,
-                        terminal,
-                        clientRpcParams
-                    );
                     return;
                 }
 
                 if (newGroupCreditsAmount < 0)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to set credits to a negative number while changing levels.");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
-                        terminal.groupCredits,
-                        terminal.numberOfItemsInDropship,
-                        terminal.hasWarrantyTicket,
-                        terminal,
-                        clientRpcParams
-                    );
                     return;
                 }
 
                 if (!configCheckPrices.Value)
                 {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) changed levels.");
                     instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
                     return;
                 }
+
+                Terminal terminal = FindObjectOfType<Terminal>();
 
                 if (moons.Count == 0)
                 {
@@ -507,14 +494,6 @@ namespace HostFixes
                 if (!moons.ContainsKey(levelID))
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) sent levelID ({levelID}) that is not in the moons array.");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
-                        terminal.groupCredits,
-                        terminal.numberOfItemsInDropship,
-                        terminal.hasWarrantyTicket,
-                        terminal,
-                        clientRpcParams
-                    );
                     return;
                 }
 
@@ -523,14 +502,6 @@ namespace HostFixes
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. " +
                         $"Spent credits: {terminal.groupCredits - newGroupCreditsAmount} Moon cost: {moonCost}");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
-                        terminal.groupCredits,
-                        terminal.numberOfItemsInDropship,
-                        terminal.hasWarrantyTicket,
-                        terminal,
-                        clientRpcParams
-                    );
                     return;
                 }
                 else
@@ -539,18 +510,11 @@ namespace HostFixes
                     {
                         Log.LogInfo($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. " +
                             $"Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
-                        ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                        HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
-                            terminal.groupCredits,
-                            terminal.numberOfItemsInDropship,
-                            terminal.hasWarrantyTicket,
-                            terminal,
-                            clientRpcParams
-                        );
                         return;
                     }
                 }
 
+                InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) changed levels.");
                 instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
             }
 
@@ -931,12 +895,6 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.OwnerClientId != senderClientId)
-                {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) SteamId:({senderSteamId}) sent SendNewPlayerValuesServerRpc for the wrong player.");
-                    return;
-                }
-
                 if (senderSteamId != newPlayerSteamId)
                 {
                     Log.LogInfo($"Client sent incorrect steamId. Player's steamId: ({senderSteamId}) Sent steamId: ({newPlayerSteamId})");
@@ -1150,7 +1108,7 @@ namespace HostFixes
 
                 if (thrownObject is null)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
                     return;
                 }
 
@@ -1162,7 +1120,7 @@ namespace HostFixes
 
                 if (!thrownObject.TryGetComponent(out GrabbableObject _))
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
                     return;
                 }
 
@@ -1187,7 +1145,7 @@ namespace HostFixes
 
                 if (throwDistance > instance.grabDistance + 7)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
                     instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, floorYRot);
                     return;
                 }
@@ -1297,18 +1255,6 @@ namespace HostFixes
                     return;
                 }
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
-            }
-
-            public void SetTimesHeardNoiseServerRpc(float valueChange, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-
-                if (senderClientId != 0)
-                {
-                    return;
-                }
-
-                instance.SetTimesHeardNoiseServerRpc(valueChange * (StartOfRound.Instance.connectedPlayersAmount + 1));
             }
 
             public void SetShipLightsServerRpc(bool setLightsOn, ShipLights instance, ServerRpcParams serverRpcParams)
@@ -1728,6 +1674,7 @@ namespace HostFixes
                     return;
                 }
 
+                InfoPanel.Instance.Log($"Player #{senderPlayerId} ({player.playerUsername}) landed the ship");
                 instance.StartGameServerRpc();
             }
 
@@ -1773,14 +1720,7 @@ namespace HostFixes
                     return;
                 }
 
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
-                if ((ulong)joiningClientId != senderClientId)
-                {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing SyncAlreadyHeldObjectsServerRpc on another player.");
-                    return;
-                }
-
-                instance.SyncAlreadyHeldObjectsServerRpc((int)senderClientId);
+                instance.SyncAlreadyHeldObjectsServerRpc(joiningClientId);
             }
 
             public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
@@ -1830,19 +1770,6 @@ namespace HostFixes
                     return;
                 }
 
-                if (senderClientId == 0)
-                {
-                    instance.ChangeEnemyOwnerServerRpc(clientId);
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
-
-                if (player.isPlayerDead)
-                {
-                    return;
-                }
-
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
@@ -1870,6 +1797,36 @@ namespace HostFixes
                 }
 
                 instance.ActivateItemServerRpc(onOff, buttonDown);
+            }
+
+            public void HitEnemyServerRpc(int force, int playerWhoHit, bool playHitSFX, int hitID, EnemyAI instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (playerWhoHit == -1 && clientId == 0)
+                {
+                    instance.HitEnemyClientRpc(force, playerWhoHit, playHitSFX, hitID);
+                    return;
+                }
+
+                if (playerWhoHit == -1)
+                {
+                    return;
+                }
+
+                if (force > 5)
+                {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({player.playerUsername}) hit enemy with force greater than 5 ({force})");
+                }
+
+                instance.HitEnemyServerRpc(force, senderPlayerId, playHitSFX, hitID);
             }
 
             public void SetMagnetOnServerRpc(bool on, StartOfRound instance, ServerRpcParams serverRpcParams)
@@ -2150,6 +2107,11 @@ namespace HostFixes
             public void CarBumpServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
 
                 if (senderClientId != 0)
                 {
@@ -2162,6 +2124,11 @@ namespace HostFixes
             public void CarCollisionServerRpc(Vector3 vel, float magn, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
 
                 if (senderClientId != 0)
                 {
@@ -2208,35 +2175,6 @@ namespace HostFixes
                 }
 
                 instance.SpringDriverSeatServerRpc();
-            }
-
-            public void CreateMimicServerRpc(bool inFactory, Vector3 playerPositionAtDeath, HauntedMaskItem instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
-                {
-                    Log.LogError($"[CreateMimicServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
-
-                if (player.isPlayerDead == false)
-                {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to create mimic without dying.");
-                    return;
-                }
-                
-                if (instance.previousPlayerHeldBy != player)
-                {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to create mimic without holding mask.");
-                    return;
-                }
-
-                instance.NetworkObject.Despawn(true);
-
-                Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) created a Mimic.");
-                instance.CreateMimicServerRpc(inFactory, playerPositionAtDeath);
             }
         }
 
@@ -3006,41 +2944,6 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class SetTimesHeardNoiseServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_745684781")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetTimesHeardNoiseServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetTimesHeardNoiseServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SetTimesHeardNoiseServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
             class SetShipLightsServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(ShipLights), "__rpc_handler_1625678258")]
@@ -3776,6 +3679,41 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
+            class HitEnemyServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(EnemyAI), "__rpc_handler_3538577804")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "HitEnemyServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.HitEnemyServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch HitEnemyServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
             class SetMagnetOnServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_3212216718")]
@@ -4329,41 +4267,6 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SpringDriverSeatServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class CreateMimicServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(HauntedMaskItem), "__rpc_handler_1065539967")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "CreateMimicServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.CreateMimicServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch CreateMimicServerRpc");
                     }
 
                     return codes.AsEnumerable();
