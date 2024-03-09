@@ -2,11 +2,20 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <AssemblyName>CharlesE2.HostFixes</AssemblyName>
+        <AssemblyName>$(MSBuildProjectName)</AssemblyName>
         <Description>Fixes for hosting a Lethal Company Lobby.</Description>
-        <Version>1.0.8</Version>
+        <Version>1.0.9</Version>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
+        <Authors>CharlesE2</Authors>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+      <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+      <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -23,15 +32,23 @@
     <ItemGroup>
       <Reference Include="Assembly-CSharp">
         <HintPath>lib\Assembly-CSharp.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Facepunch Transport for Netcode for GameObjects">
         <HintPath>lib\Facepunch Transport for Netcode for GameObjects.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Facepunch.Steamworks.Win64">
         <HintPath>lib\Facepunch.Steamworks.Win64.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Unity.Netcode.Runtime">
         <HintPath>lib\Unity.Netcode.Runtime.dll</HintPath>
+        <Private>false</Private>
+      </Reference>
+      <Reference Include="UnityEngine.UI">
+        <HintPath>lib\UnityEngine.UI.dll</HintPath>
+        <Private>false</Private>
       </Reference>
     </ItemGroup>
 </Project>
