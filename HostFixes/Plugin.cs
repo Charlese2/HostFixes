@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
+using HostFixes.UI;
 using Steamworks;
 using Steamworks.Data;
 using System;
@@ -1364,6 +1365,7 @@ namespace HostFixes
                     return;
                 }
 
+                InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) started the ship");
                 instance.StartGameServerRpc();
             }
 

@@ -23,15 +23,23 @@
     <ItemGroup>
       <Reference Include="Assembly-CSharp">
         <HintPath>lib\Assembly-CSharp.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Facepunch Transport for Netcode for GameObjects">
         <HintPath>lib\Facepunch Transport for Netcode for GameObjects.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Facepunch.Steamworks.Win64">
         <HintPath>lib\Facepunch.Steamworks.Win64.dll</HintPath>
+        <Private>false</Private>
       </Reference>
       <Reference Include="Unity.Netcode.Runtime">
         <HintPath>lib\Unity.Netcode.Runtime.dll</HintPath>
+        <Private>false</Private>
+      </Reference>
+      <Reference Include="UnityEngine.UI">
+        <HintPath>lib\UnityEngine.UI.dll</HintPath>
+        <Private>false</Private>
       </Reference>
     </ItemGroup>
 </Project>
