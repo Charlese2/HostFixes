@@ -1528,7 +1528,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.TryGetComponent(out RemoteProp _))
+                if (instance.TryGetComponent(out RemoteProp _) || instance.TryGetComponent(out NoisemakerProp _))
                 {
                     Instance.StartCoroutine(ActivateItemCooldown(instance.NetworkObjectId));
                 }
