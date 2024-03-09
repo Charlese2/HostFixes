@@ -86,7 +86,8 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
-            Instance ??= this;
+            if (Instance is not null) Log.LogError("Multiple instance of HostFixes plugin loaded.");
+            Instance = this;
             new HostFixesServerSendRpcs();
 
             BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -101,7 +102,12 @@ namespace HostFixes
             CancelInvoke(nameof(UpdatePlayerPositionCache));
             if(Instance == this)
             {
+                Log.LogInfo("OnDestroy called and Instance is the current object.");
                 Instance = null;
+            }
+            else
+            {
+                Log.LogError("OnDestroy called while Instance is not the current object.");
             }
         }
 
