@@ -241,7 +241,7 @@ namespace HostFixes
             }
         }
 
-        public class HostFixesServerRecieveRpcs
+        public class HostFixesServerReceiveRpcs
         {
             public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
@@ -480,7 +480,7 @@ namespace HostFixes
 
                 try
                 {
-                    //Replace <> from recieved messages with () to prevent injected Text Tags.
+                    //Replace <> from received messages with () to prevent injected Text Tags.
                     sanitizedChatMessage = Regex.Replace(chatMessage, @"<(\S+?)>", "($+)");
                 }
                 catch (Exception exception)
@@ -1571,7 +1571,7 @@ namespace HostFixes
                         int callLocation = i;
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldloc, 12));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SyncShipUnlockablesServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncShipUnlockablesServerRpc));
 
                         found = true;
                     }
@@ -1612,7 +1612,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.BuyItemsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.BuyItemsServerRpc));
                     }
                     else
                     {
@@ -1647,7 +1647,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SyncGroupCreditsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncGroupCreditsServerRpc));
                     }
                     else
                     {
@@ -1681,7 +1681,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PlayTerminalAudioServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayTerminalAudioServerRpc));
                     }
                     else
                     {
@@ -1715,7 +1715,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.BuyShipUnlockableServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.BuyShipUnlockableServerRpc));
                     }
                     else
                     {
@@ -1749,7 +1749,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.ChangeLevelServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ChangeLevelServerRpc));
                     }
                     else
                     {
@@ -1783,7 +1783,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.AddPlayerChatMessageServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.AddPlayerChatMessageServerRpc));
                     }
                     else
                     {
@@ -1817,7 +1817,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.AddTextMessageServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.AddTextMessageServerRpc));
                     }
                     else
                     {
@@ -1851,7 +1851,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SetShipLeaveEarlyServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetShipLeaveEarlyServerRpc));
                     }
                     else
                     {
@@ -1888,7 +1888,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PlaceShipObjectServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlaceShipObjectServerRpc));
                     }
                     else
                     {
@@ -1922,7 +1922,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.DespawnEnemyServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.DespawnEnemyServerRpc));
                     }
                     else
                     {
@@ -1956,7 +1956,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.EndGameServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.EndGameServerRpc));
                     }
                     else
                     {
@@ -1991,7 +1991,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PlayerLoadedServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayerLoadedServerRpc));
                     }
                     else
                     {
@@ -2026,7 +2026,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.FinishedGeneratingLevelServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.FinishedGeneratingLevelServerRpc));
                     }
                     else
                     {
@@ -2061,7 +2061,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SendNewPlayerValuesServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SendNewPlayerValuesServerRpc));
                     }
                     else
                     {
@@ -2096,7 +2096,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.DamagePlayerFromOtherClientServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.DamagePlayerFromOtherClientServerRpc));
                     }
                     else
                     {
@@ -2131,7 +2131,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.ShootGunServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ShootGunServerRpc));
                     }
                     else
                     {
@@ -2166,7 +2166,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.ReloadGunEffectsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ReloadGunEffectsServerRpc));
                     }
                     else
                     {
@@ -2201,7 +2201,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.GrabObjectServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.GrabObjectServerRpc));
                     }
                     else
                     {
@@ -2235,7 +2235,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SetShipLightsServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetShipLightsServerRpc));
                     }
                     else
                     {
@@ -2269,7 +2269,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UseSignalTranslatorServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UseSignalTranslatorServerRpc));
                     }
                     else
                     {
@@ -2304,7 +2304,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdatePlayerPositionServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerPositionServerRpc));
                     }
                     else
                     {
@@ -2339,7 +2339,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.TeleportPlayerServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.TeleportPlayerServerRpc));
                     }
                     else
                     {
@@ -2374,7 +2374,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PressTeleportButtonServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PressTeleportButtonServerRpc));
                     }
                     else
                     {
@@ -2409,7 +2409,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.TeleportPlayerOutServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.TeleportPlayerOutServerRpc));
                     }
                     else
                     {
@@ -2444,7 +2444,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdatePlayerRotationServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerRotationServerRpc));
                     }
                     else
                     {
@@ -2479,7 +2479,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdatePlayerRotationFullServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerRotationFullServerRpc));
                     }
                     else
                     {
@@ -2514,7 +2514,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdatePlayerAnimationServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerAnimationServerRpc));
                     }
                     else
                     {
@@ -2549,7 +2549,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdateUsedByPlayerServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdateUsedByPlayerServerRpc));
                     }
                     else
                     {
@@ -2584,7 +2584,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.StopUsingServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.StopUsingServerRpc));
                     }
                     else
                     {
@@ -2619,7 +2619,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdateAnimServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdateAnimServerRpc));
                     }
                     else
                     {
@@ -2654,7 +2654,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.UpdateAnimTriggerServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdateAnimTriggerServerRpc));
                     }
                     else
                     {
@@ -2688,7 +2688,7 @@ namespace HostFixes
                     if (found)
                     {
                         codes.Insert(callLocation + 0, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 1].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SyncAllPlayerLevelsServerRpc));
+                        codes[callLocation + 1].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncAllPlayerLevelsServerRpc));
                     }
                     else
                     {
@@ -2723,7 +2723,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.StartGameServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.StartGameServerRpc));
                     }
                     else
                     {
@@ -2758,7 +2758,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.PlayLeverPullEffectsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayLeverPullEffectsServerRpc));
                     }
                     else
                     {
@@ -2793,7 +2793,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SyncAlreadyHeldObjectsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncAlreadyHeldObjectsServerRpc));
                     }
                     else
                     {
@@ -2828,7 +2828,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SyncShipUnlockablesServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncShipUnlockablesServerRpc));
                     }
                     else
                     {
@@ -2863,7 +2863,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.SetPatienceServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetPatienceServerRpc));
                     }
                     else
                     {
@@ -2898,7 +2898,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.CheckAnimationGrabPlayerServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.CheckAnimationGrabPlayerServerRpc));
                     }
                     else
                     {
@@ -2933,7 +2933,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.AttackPlayersServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.AttackPlayersServerRpc));
                     }
                     else
                     {
@@ -2968,7 +2968,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.ChangeEnemyOwnerServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ChangeEnemyOwnerServerRpc));
                     }
                     else
                     {
@@ -3003,7 +3003,7 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerRecieveRpcs).GetMethod(nameof(HostFixesServerRecieveRpcs.ActivateItemServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ActivateItemServerRpc));
                     }
                     else
                     {
