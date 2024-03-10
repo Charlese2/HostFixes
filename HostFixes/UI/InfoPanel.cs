@@ -23,13 +23,16 @@ namespace HostFixes.UI
             GameObjectInstance.transform.localPosition = Vector3.zero;
             GameObjectInstance.transform.localScale = new Vector3(1, 1, 1);
             var test = GameObjectInstance.AddComponent<RectTransform>();
-            test.anchorMin = new Vector2(0.2f, 0.2f);
-            test.anchorMax = new Vector2(0.8f, 0.8f);
+            test.anchorMin = new Vector2(0.5f, 0.5f);
+            test.anchorMax = new Vector2(0.9f, 0.85f);
 
 
 
             var canvasRenderer = GameObjectInstance.AddComponent<CanvasRenderer>();
             canvasRenderer.SetColor(new Color(1.0f, 1.0f, 1.0f, 1.0f));
+
+            var canvasGroup = GameObjectInstance.AddComponent<CanvasGroup>();
+            canvasGroup.blocksRaycasts = false;
 
             Font font = Font.CreateDynamicFontFromOSFont("Noto Sans", 8);
 
@@ -39,6 +42,7 @@ namespace HostFixes.UI
             if (MyText is not null)
             {
                 MyText.font = font;
+                MyText.fontSize = 8;
                 MyText.text = "Host Fixes";
                 MyText.supportRichText = false;
             }
