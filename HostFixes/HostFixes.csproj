@@ -2,11 +2,20 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
-        <AssemblyName>CharlesE2.HostFixes</AssemblyName>
+        <AssemblyName>$(MSBuildProjectName)</AssemblyName>
         <Description>Fixes for hosting a Lethal Company Lobby.</Description>
-        <Version>1.0.8</Version>
+        <Version>1.0.10</Version>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
+        <Authors>CharlesE2</Authors>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+      <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+      <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
