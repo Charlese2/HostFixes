@@ -66,6 +66,17 @@ namespace HostFixes
 
         private void Awake()
         {
+            // Create separate GameObject to be the plugin Instance so Coroutines can be run.
+            // It avoids destruction if the BepInEx Manager gets destroyed.
+            // Needs to check the current game object as the plugin would end up recursivly adding it's self.
+            if (GameObject.Find("HostFixes") == null && name != "HostFixes")
+            {
+                GameObject HostFixes = new("HostFixes") { hideFlags = HideFlags.HideAndDontSave };
+                DontDestroyOnLoad(HostFixes);
+                Instance = HostFixes.AddComponent<Plugin>();
+                return;
+            }
+
             // Plugin startup logic
             Log = Logger;
             configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
@@ -86,29 +97,10 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
-            if (Instance is not null) Log.LogError("Multiple instance of HostFixes plugin loaded.");
-            Instance = this;
             new HostFixesServerSendRpcs();
 
             BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
             EndSendClientRpc = typeof(NetworkBehaviour).GetMethod("__endSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
-        }
-
-        private void OnDestroy()
-        {
-            SteamMatchmaking.OnLobbyCreated -= ConnectionEvents.LobbyCreated;
-            SteamMatchmaking.OnLobbyMemberJoined -= ConnectionEvents.ConnectionAttempt;
-            SteamMatchmaking.OnLobbyMemberLeave -= ConnectionEvents.ConnectionCleanup;
-            CancelInvoke(nameof(UpdatePlayerPositionCache));
-            if(Instance == this)
-            {
-                Log.LogInfo("OnDestroy called and Instance is the current object.");
-                Instance = null;
-            }
-            else
-            {
-                Log.LogError("OnDestroy called while Instance is not the current object.");
-            }
         }
 
         private void UpdatePlayerPositionCache()
