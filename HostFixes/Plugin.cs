@@ -717,7 +717,6 @@ namespace HostFixes
 
                 if (instance.fullyLoadedPlayers.Contains(clientId))
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call PlayerLoadedServerRpc multiple times.");
                     return;
                 }
 
@@ -749,7 +748,6 @@ namespace HostFixes
 
                 if (instance.playersFinishedGeneratingFloor.Contains(clientId))
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call FinishedGeneratingLevelServerRpc multiple times.");
                     return;
                 }
 
@@ -1437,23 +1435,6 @@ namespace HostFixes
                 }
 
                 instance.SyncShipUnlockablesServerRpc();
-            }
-
-            public void SetPatienceServerRpc(float valueChange, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
-            {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[SetPatienceServerRpc] Failed to get the playerId from clientId: {clientId}");
-                    return;
-                }
-
-                if (clientId != 0)
-                {
-                    return;
-                }
-
-                instance.SetPatienceServerRpc(valueChange);
             }
 
             public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
@@ -2831,41 +2812,6 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SyncShipUnlockablesServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class SetPatienceServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_892728304")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetPatienceServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetPatienceServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SetPatienceServerRpc");
                     }
 
                     return codes.AsEnumerable();
