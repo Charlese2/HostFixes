@@ -23,8 +23,8 @@ namespace HostFixes.UI
             GameObjectInstance.transform.localPosition = Vector3.zero;
             GameObjectInstance.transform.localScale = new Vector3(1, 1, 1);
             var test = GameObjectInstance.AddComponent<RectTransform>();
-            test.anchorMin = new Vector2(0.5f, 0.5f);
-            test.anchorMax = new Vector2(0.9f, 0.85f);
+            test.anchorMin = new Vector2(0.6f, 0.6f);
+            test.anchorMax = new Vector2(0.943f, 0.89f);
 
 
 
@@ -42,7 +42,7 @@ namespace HostFixes.UI
             if (MyText is not null)
             {
                 MyText.font = font;
-                MyText.fontSize = 8;
+                MyText.fontSize = 7;
                 MyText.text = "Host Fixes";
                 MyText.supportRichText = false;
             }
