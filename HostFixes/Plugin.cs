@@ -1529,6 +1529,25 @@ namespace HostFixes
 
                 Traverse.Create(instance).Method("ActivateItemServerRpc", [onOff, buttonDown]).GetValue();
             }
+
+            public void HitEnemyServerRpc(int force, int playerWhoHit, bool playHitSFX, EnemyAI instance, ServerRpcParams serverRpcParams)
+            {
+                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+
+                if (force != 1)
+                {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) hit with force not equal to 1 ({force})");
+                }
+
+                instance.HitEnemyServerRpc(force, playerWhoHit, playHitSFX);
+            }
         }
 
         public class HostFixesServerSendRpcs : NetworkBehaviour
@@ -3013,6 +3032,41 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
+
+            [HarmonyPatch]
+            class HitEnemyServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(EnemyAI), "__rpc_handler_2814283679")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "HitEnemyServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.HitEnemyServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch HitEnemyServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+                }
         }
     }
 }
