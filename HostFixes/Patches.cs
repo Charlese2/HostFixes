@@ -165,17 +165,8 @@ namespace HostFixes
         {
             public static void Postfix()
             {
-                NetworkManager.Singleton.OnServerStopped += ServerStopped;
-            }
-        }
-        
-        [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(NetworkManager), "OnDisable")]
-        class UnregisterNetworkManagerEvents
-        {
-            public static void Postfix()
-            {
                 NetworkManager.Singleton.OnServerStopped -= ServerStopped;
+                NetworkManager.Singleton.OnServerStopped += ServerStopped;
             }
         }
 
