@@ -119,7 +119,7 @@ namespace HostFixes
                         SteamIdtoClientIdMap[steamId] = request.ClientNetworkId;
                         ClientIdToSteamIdMap[request.ClientNetworkId] = steamId;
 
-                        if (StartOfRound.Instance.KickedClientIds.Contains(steamId))
+                        if (StartOfRound.Instance?.KickedClientIds.Contains(steamId) == true)
                         {
                             response.Reason = "You cannot rejoin after being kicked.";
                             response.Approved = false;
@@ -144,8 +144,8 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(NetworkManager), "Awake")]
-        class RegisterEvents
+        [HarmonyPatch(typeof(NetworkConnectionManager), "Initialize")]
+        class SetupIdMap
         {
             public static void Prefix()
             {
@@ -159,21 +159,23 @@ namespace HostFixes
             }
         }
 
-
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(NetworkManager), "OnDestroy")]
-        class HostCleanup
+        [HarmonyPatch(typeof(NetworkManager), "OnEnable")]
+        class RegisterNetworkManagerEvents
         {
-            public static void Prefix()
+            public static void Postfix()
             {
-                if (NetworkManager.Singleton?.IsHost == true)
-                {
-                    playerSteamNames.Clear();
-                    SteamIdtoConnectionIdMap.Clear();
-                    ConnectionIdtoSteamIdMap.Clear();
-                    SteamIdtoClientIdMap.Clear();
-                    ClientIdToSteamIdMap.Clear();
-                }
+                NetworkManager.Singleton.OnServerStopped += ServerStopped;
+            }
+        }
+        
+        [HarmonyWrapSafe]
+        [HarmonyPatch(typeof(NetworkManager), "OnDisable")]
+        class UnregisterNetworkManagerEvents
+        {
+            public static void Postfix()
+            {
+                NetworkManager.Singleton.OnServerStopped -= ServerStopped;
             }
         }
 

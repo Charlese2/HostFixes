@@ -216,7 +216,7 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton.IsHost && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
-                    Log.LogError($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the connection list.");
+                    Log.LogError($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the playerSteamNames list.");
                 }
             }
 
@@ -228,6 +228,11 @@ namespace HostFixes
                     {
                         Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
                     }
+
+                    if (!playerSteamNames.Remove(member.Id.Value))
+                    {
+                        Log.LogError($"({member.Id.Value}) already removed from playerSteamNames.");
+                    }
                 }
             }
 
@@ -235,8 +240,18 @@ namespace HostFixes
             {
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
+                    Log.LogError($"Host is already in playerSteamNames.");
                 }
             }
+        }
+
+        internal static void ServerStopped(bool _)
+        {
+            playerSteamNames.Clear();
+            SteamIdtoConnectionIdMap.Clear();
+            ConnectionIdtoSteamIdMap.Clear();
+            SteamIdtoClientIdMap.Clear();
+            ClientIdToSteamIdMap.Clear();
         }
 
         public class HostFixesServerReceiveRpcs
