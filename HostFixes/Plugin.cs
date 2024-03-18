@@ -228,11 +228,6 @@ namespace HostFixes
                     {
                         Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
                     }
-
-                    if (!playerSteamNames.Remove(member.Id.Value))
-                    {
-                        Log.LogError($"({member.Id.Value}) already removed from playerSteamNames.");
-                    }
                 }
             }
 
