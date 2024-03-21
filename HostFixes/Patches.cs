@@ -90,20 +90,6 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(ManualCameraRenderer), "SyncOrderOfRadarBoostersInList")]
-        class SyncOrderFix
-        {
-            public static bool Prefix(ManualCameraRenderer __instance)
-            {
-                List<TransformAndName> players = [.. __instance.radarTargets.Where(transformAndName => transformAndName.isNonPlayer == false)];
-                List<TransformAndName> nonplayers = [.. __instance.radarTargets.Where(transformAndName => transformAndName.isNonPlayer == true).OrderBy
-                    (transformAndName => transformAndName.transform.gameObject.GetComponent<NetworkObject>().NetworkObjectId)];
-                __instance.radarTargets = Enumerable.Concat(players, nonplayers).ToList();
-                return false;
-            }
-        }
-
-        [HarmonyWrapSafe]
         [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
         class MapSteamIdToClientId
         {
