@@ -51,7 +51,7 @@
         <Private>false</Private>
       </Reference>
     </ItemGroup>
-	<ItemGroup Condition="$(CI) != 'true'">
+	<ItemGroup Condition="$(CI) == 'true'">
 		<PackageReference Include="LethalCompany.GameLibs.Steam" Version="49.0.0-alpha.1" PrivateAssets="all" />
 	</ItemGroup>
 </Project>
