@@ -1296,6 +1296,8 @@ namespace HostFixes
                 if (Vector3.Distance(instance.transform.position, player.transform.position) > 5f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
+                    HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
                     return;
                 }
 
@@ -1393,7 +1395,7 @@ namespace HostFixes
                 float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
                 if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = new ulong[] { clientId } } };
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
                     HostFixesServerSendRpcs.Instance.PlayLeverPullEffectsClientRpc(leverPulled, instance, clientRpcParams);
                     return;
                 }
@@ -1535,6 +1537,18 @@ namespace HostFixes
                     FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [2951629574u, clientRpcParams, RpcDelivery.Reliable]);
                     bufferWriter.WriteValueSafe(in leverPulled, default);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 2951629574u, clientRpcParams, RpcDelivery.Reliable]);
+                }
+            }
+
+            public void UpdateAnimClientRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ClientRpcParams clientRpcParams = default)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [848048148u, clientRpcParams, RpcDelivery.Reliable]);
+                    bufferWriter.WriteValueSafe(in setBool, default);
+                    bufferWriter.WriteValueSafe(in playSecondaryAudios, default);
+                    bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
