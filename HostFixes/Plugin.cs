@@ -14,7 +14,6 @@ using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using Unity.Netcode;
 using UnityEngine;
-using Vector3 = UnityEngine.Vector3;
 
 namespace HostFixes
 {
@@ -470,7 +469,7 @@ namespace HostFixes
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId}") || chatMessage.Equals("[replacewithdata]")))
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [chatMessage, playerId]).GetValue();
+                    HUDManager.Instance.AddPlayerChatMessageServerRpc(chatMessage, playerId);
                     return;
                 }
 
@@ -505,7 +504,7 @@ namespace HostFixes
 
                 if (playerId == SenderPlayerId)
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddPlayerChatMessageServerRpc", [sanitizedChatMessage, playerId]).GetValue();
+                    HUDManager.Instance.AddPlayerChatMessageServerRpc(sanitizedChatMessage, playerId);
                 }
                 else
                 {
@@ -526,7 +525,7 @@ namespace HostFixes
 
                 if (GameNetworkManager.Instance.disableSteam)
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
+                    HUDManager.Instance.AddTextMessageServerRpc(chatMessage);
                     return;
                 }
 
@@ -547,7 +546,7 @@ namespace HostFixes
                     chatMessage.Equals($"{steamUsername}... joined the ship.") ||
                     chatMessage.Equals($"{username} was left behind."))
                 {
-                    Traverse.Create(HUDManager.Instance).Method("AddTextMessageServerRpc", [chatMessage]).GetValue();
+                    HUDManager.Instance.AddTextMessageServerRpc(chatMessage);
                 }
                 else
                 {
@@ -708,7 +707,7 @@ namespace HostFixes
 
                 if (senderClientId == 0)
                 {
-                    Traverse.Create(instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
+                    instance.PlayerLoadedServerRpc(clientId);
                     return;
                 }
 
@@ -730,7 +729,7 @@ namespace HostFixes
                     return;
                 }
 
-                Traverse.Create(instance).Method("PlayerLoadedServerRpc", [clientId]).GetValue();
+                instance.PlayerLoadedServerRpc(clientId);
             }
 
             public void FinishedGeneratingLevelServerRpc(ulong clientId, RoundManager instance, ServerRpcParams serverRpcParams)
@@ -782,7 +781,7 @@ namespace HostFixes
 
                 if (GameNetworkManager.Instance.disableSteam)
                 {
-                    Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [newPlayerSteamId]).GetValue();
+                    instance.SendNewPlayerValuesServerRpc(newPlayerSteamId);
                     return;
                 }
 
@@ -797,7 +796,7 @@ namespace HostFixes
                     Log.LogWarning($"Client sent incorrect steamId. Player's steamId: ({senderSteamId}) Sent steamId: ({newPlayerSteamId})");
                 }
 
-                Traverse.Create(instance).Method("SendNewPlayerValuesServerRpc", [senderSteamId]).GetValue();
+                instance.SendNewPlayerValuesServerRpc(senderSteamId);
             }
 
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
@@ -899,7 +898,7 @@ namespace HostFixes
 
                 Instance.StartCoroutine(ReloadGunEffectsCooldown(SenderPlayerId));
 
-                int ammoInInventorySlot = Traverse.Create(instance).Method("FindAmmoInInventory").GetValue<int>();
+                int ammoInInventorySlot = instance.FindAmmoInInventory();
                 if (ammoInInventorySlot == -1)
                 {
                     return;
@@ -936,7 +935,7 @@ namespace HostFixes
 
                 if (!configLimitGrabDistance.Value)
                 {
-                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
+                    instance.GrabObjectServerRpc(grabbedObject);
                     return;
                 }
 
@@ -948,10 +947,11 @@ namespace HostFixes
                     if (distanceToObject > instance.grabDistance * 2 && isNotBody)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
-                        Traverse.Create(instance).Method("GrabObjectClientRpc", [false, grabbedObject]).GetValue();
+                        instance.GrabObjectClientRpc(false, grabbedObject);
                         return;
                     }
-                    Traverse.Create(instance).Method("GrabObjectServerRpc", [grabbedObject]).GetValue();
+
+                    instance.GrabObjectServerRpc(grabbedObject);
                 }
                 catch (Exception e)
                 {
@@ -1044,12 +1044,12 @@ namespace HostFixes
                     return;
                 }
 
-                Transform exitPoint = Traverse.Create(instance).Field("exitPoint").GetValue<Transform>();
+                Transform exitPoint = instance.exitPoint;
 
                 if (exitPoint == null)
                 {
                     instance.FindExitPoint();
-                    exitPoint = Traverse.Create(instance).Field("exitPoint").GetValue<Transform>();
+                    exitPoint = instance.exitPoint;
                 }
 
                 playerPositions[(ulong)SenderPlayerId] = exitPoint.position;
@@ -1138,7 +1138,7 @@ namespace HostFixes
                     float maxDistancePerTick = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
                     if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || !configExperimentalPositionCheck.Value)
                     {
-                        Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                        instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                         allowedMovement[instance.playerClientId] = true;
                         return;
                     }
@@ -1151,17 +1151,17 @@ namespace HostFixes
                             return;
                         }
 
-                        Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                        instance.UpdatePlayerPositionServerRpc(coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                         return;
                     }
 
                     allowedMovement[instance.playerClientId] = true;
-                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                 }
                 catch (Exception e)
                 {
                     Log.LogError(e);
-                    Traverse.Create(instance).Method("UpdatePlayerPositionServerRpc", [newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded]).GetValue();
+                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                 }
             }
 
@@ -1173,11 +1173,11 @@ namespace HostFixes
                     {
                         return;
                     }
-                    Traverse.Create(instance).Method("UpdatePlayerRotationServerRpc", [newRot, newYRot]).GetValue();
+                    instance.UpdatePlayerRotationServerRpc(newRot, newYRot);
                 }
                 catch
                 {
-                    Traverse.Create(instance).Method("UpdatePlayerRotationServerRpc", [newRot, newYRot]).GetValue();
+                    instance.UpdatePlayerRotationServerRpc(newRot, newYRot);
                 }
             }
 
@@ -1189,11 +1189,11 @@ namespace HostFixes
                     {
                         return;
                     }
-                    Traverse.Create(instance).Method("UpdatePlayerRotationFullServerRpc", [playerEulers]).GetValue();
+                    instance.UpdatePlayerRotationFullServerRpc(playerEulers);
                 }
                 catch
                 {
-                    Traverse.Create(instance).Method("UpdatePlayerRotationFullServerRpc", [playerEulers]).GetValue();
+                    instance.UpdatePlayerRotationFullServerRpc(playerEulers);
                 }
             }
 
@@ -1203,15 +1203,15 @@ namespace HostFixes
                 {
                     if (!allowedMovement[instance.playerClientId])
                     {
-                        Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [-1437577361/*Standing Still Anim Hash*/, -1f]).GetValue();
+                        instance.UpdatePlayerAnimationServerRpc(-1437577361/*Standing Still Anim Hash*/, -1f);
                         return;
                     }
 
-                    Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
+                    instance.UpdatePlayerAnimationServerRpc(animationState, animationSpeed);
                 }
                 catch
                 {
-                    Traverse.Create(instance).Method("UpdatePlayerAnimationServerRpc", [animationState, animationSpeed]).GetValue();
+                    instance.UpdatePlayerAnimationServerRpc(animationState, animationSpeed);
                 }
             }
 
@@ -1226,7 +1226,7 @@ namespace HostFixes
 
                 if (clientId == 0)
                 {
-                    Traverse.Create(instance).Method("UpdateUsedByPlayerServerRpc", [playerNum]).GetValue();
+                    instance.UpdateUsedByPlayerServerRpc(playerNum);
                     return;
                 }
 
@@ -1236,7 +1236,7 @@ namespace HostFixes
                     return;
                 }
 
-                Traverse.Create(instance).Method("UpdateUsedByPlayerServerRpc", [playerNum]).GetValue();
+                instance.UpdateUsedByPlayerServerRpc(playerNum);
             }
 
             public void StopUsingServerRpc(int playerUsing, InteractTrigger instance, ServerRpcParams serverRpcParams)
@@ -1250,7 +1250,7 @@ namespace HostFixes
 
                 if (clientId == 0)
                 {
-                    Traverse.Create(instance).Method("StopUsingServerRpc", [playerUsing]).GetValue();
+                    instance.StopUsingServerRpc(playerUsing);
                     return;
                 }
 
@@ -1260,7 +1260,7 @@ namespace HostFixes
                     return;
                 }
 
-                Traverse.Create(instance).Method("StopUsingServerRpc", [playerUsing]).GetValue();
+                instance.StopUsingServerRpc(playerUsing);
             }
 
             public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
@@ -1274,7 +1274,7 @@ namespace HostFixes
 
                 if (clientId == 0)
                 {
-                    Traverse.Create(instance).Method("UpdateAnimServerRpc", [setBool, playSecondaryAudios, playerWhoTriggered]).GetValue();
+                    instance.UpdateAnimServerRpc(setBool, playSecondaryAudios, playerWhoTriggered);
                     return;
                 }
 
@@ -1301,7 +1301,7 @@ namespace HostFixes
                     return;
                 }
 
-                Traverse.Create(instance).Method("UpdateAnimServerRpc", [setBool, playSecondaryAudios, playerWhoTriggered]).GetValue();
+                instance.UpdateAnimServerRpc(setBool, playSecondaryAudios, playerWhoTriggered);
             }
 
             public void UpdateAnimTriggerServerRpc(AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
@@ -1313,7 +1313,7 @@ namespace HostFixes
                     return;
                 }
 
-                Traverse.Create(instance).Method("UpdateAnimTriggerServerRpc").GetValue();
+                instance.UpdateAnimTriggerServerRpc();
             }
 
             public void SyncAllPlayerLevelsServerRpc(int newPlayerLevel, int playerClientId, ServerRpcParams serverRpcParams)
@@ -1518,7 +1518,7 @@ namespace HostFixes
                     Instance.StartCoroutine(ActivateItemCooldown(instance.NetworkObjectId));
                 }
 
-                Traverse.Create(instance).Method("ActivateItemServerRpc", [onOff, buttonDown]).GetValue();
+                instance.ActivateItemServerRpc(onOff, buttonDown);
             }
         }
 
@@ -1566,11 +1566,6 @@ namespace HostFixes
                 {
                     if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc", ReflectedType.Name: "StartOfRound" })
                     {
-                        if(codes.Count > 1000)
-                        {
-                            throw new Exception("Stuck in infinite loop while patching.");
-                        }
-
                         int callLocation = i;
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldloc, 12));
@@ -1578,11 +1573,16 @@ namespace HostFixes
 
                         found = true;
                     }
+
+                    if(codes.Count > 1000)
+                    {
+                        throw new Exception("Stuck in infinite loop while patching.");
+                    }
                 }
 
                 if (!found)
                 {
-                    Log.LogError("Could not patch BuyItemsServerRpc");
+                    Log.LogError("Could not patch SyncAlreadyHeldObjectsServerRpc's manual call to SyncShipUnlockablesServerRpc");
                 }
 
                 return codes.AsEnumerable();

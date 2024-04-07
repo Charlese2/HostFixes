@@ -3,8 +3,6 @@ using HarmonyLib;
 using Netcode.Transports.Facepunch;
 using Steamworks;
 using Steamworks.Data;
-using System.Collections.Generic;
-using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using static HostFixes.Plugin;
@@ -19,9 +17,8 @@ namespace HostFixes
         {
             public static void Prefix(ref Connection connection, ref ConnectionInfo info)
             {
-                NetIdentity identity = Traverse.Create(info).Field<NetIdentity>("identity").Value;
-                SteamIdtoConnectionIdMap[identity.SteamId.Value] = connection.Id;
-                ConnectionIdtoSteamIdMap[connection.Id] = identity.SteamId.Value;
+                SteamIdtoConnectionIdMap[info.identity.SteamId.Value] = connection.Id;
+                ConnectionIdtoSteamIdMap[connection.Id] = info.identity.SteamId.Value;
             }
         }
 
@@ -33,10 +30,9 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton?.IsListening == true)
                 {
-                    NetIdentity identity = Traverse.Create(info).Field<NetIdentity>("identity").Value;
-                    if (!SteamIdtoConnectionIdMap.Remove(identity.SteamId.Value))
+                    if (!SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value))
                     {
-                        Log.LogError($"steamId: ({identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
+                        Log.LogError($"steamId: ({info.identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
                     }
 
                     if (!ConnectionIdtoSteamIdMap.Remove(connection.Id))
@@ -44,9 +40,9 @@ namespace HostFixes
                         Log.LogError($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
                     }
 
-                    if (!playerSteamNames.Remove(identity.SteamId.Value))
+                    if (!playerSteamNames.Remove(info.identity.SteamId.Value))
                     {
-                        Log.LogError($"steamId: ({identity.SteamId.Value}) was not in playerSteamNames.");
+                        Log.LogError($"steamId: ({info.identity.SteamId.Value}) was not in playerSteamNames.");
                     }
                 }
             }
@@ -97,8 +93,7 @@ namespace HostFixes
             {
                 if (!GameNetworkManager.Instance.disableSteam)
                 {
-                    NetworkConnectionManager networkConnectionManager = Traverse.Create(NetworkManager.Singleton).Field("ConnectionManager").GetValue<NetworkConnectionManager>();
-                    ulong transportId = Traverse.Create(networkConnectionManager).Method("ClientIdToTransportId", [request.ClientNetworkId]).GetValue<ulong>();
+                    ulong transportId = NetworkManager.Singleton.ConnectionManager.ClientIdToTransportId(request.ClientNetworkId);
 
                     if (ConnectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
                     {
