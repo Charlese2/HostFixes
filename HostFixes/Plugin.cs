@@ -20,9 +20,9 @@ namespace HostFixes
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
-        internal static ManualLogSource Log;
+        internal static ManualLogSource Log = null!;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
-        internal static CompatibleNoun[] moons;
+        internal static CompatibleNoun[]? moons;
         internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -31,16 +31,16 @@ namespace HostFixes
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
         internal static bool terminalSoundPlaying;
 
-        public static ConfigEntry<int> configMinimumVotesToLeaveEarly;
-        public static ConfigEntry<bool> configDisablePvpInShip;
-        public static ConfigEntry<bool> configLogSignalTranslatorMessages;
-        public static ConfigEntry<bool> configLogPvp;
-        public static ConfigEntry<bool> configExperimentalChanges;
-        public static ConfigEntry<bool> configExperimentalPositionCheck;
-        public static ConfigEntry<bool> configShipObjectRotationCheck;
-        public static ConfigEntry<bool> configLimitGrabDistance;
-        public static ConfigEntry<int> configLimitShipLeverDistance;
-        public static ConfigEntry<int> configLimitTeleporterButtonDistance;
+        public static ConfigEntry<int> configMinimumVotesToLeaveEarly = null!;
+        public static ConfigEntry<bool> configDisablePvpInShip = null!;
+        public static ConfigEntry<bool> configLogSignalTranslatorMessages = null!;
+        public static ConfigEntry<bool> configLogPvp = null!;
+        public static ConfigEntry<bool> configExperimentalChanges = null!;
+        public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
+        public static ConfigEntry<bool> configShipObjectRotationCheck = null!;
+        public static ConfigEntry<bool> configLimitGrabDistance = null!;
+        public static ConfigEntry<int> configLimitShipLeverDistance = null!;
+        public static ConfigEntry<int> configLimitTeleporterButtonDistance = null!;
 
         private static Dictionary<int, bool> playerMovedShipObject = [];
         private static Dictionary<int, bool> reloadGunEffectsOnCooldown = [];
@@ -54,14 +54,14 @@ namespace HostFixes
         private static bool buyShipUnlockableOnCooldown;
         private static bool pressTeleportButtonOnCooldown;
 
-        public static Plugin Instance { get; private set; }
+        public static Plugin Instance { get; private set; } = null!;
         public static Dictionary<ulong, uint> SteamIdtoConnectionIdMap { get; private set; } = [];
         public static Dictionary<uint, ulong> ConnectionIdtoSteamIdMap { get; private set; } = [];
         public static Dictionary<ulong, ulong> SteamIdtoClientIdMap { get; private set; } = [];
         public static Dictionary<ulong, ulong> ClientIdToSteamIdMap { get; private set; } = [];
 
-        private static MethodInfo BeginSendClientRpc;
-        private static MethodInfo EndSendClientRpc;
+        private static readonly MethodInfo BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly MethodInfo EndSendClientRpc = typeof(NetworkBehaviour).GetMethod("__endSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
 
         private void Awake()
         {
@@ -97,9 +97,6 @@ namespace HostFixes
             Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             new HostFixesServerSendRpcs();
-
-            BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
-            EndSendClientRpc = typeof(NetworkBehaviour).GetMethod("__endSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         private void UpdatePlayerPositionCache()
@@ -1524,7 +1521,7 @@ namespace HostFixes
 
         public class HostFixesServerSendRpcs : NetworkBehaviour
         {
-            public static HostFixesServerSendRpcs Instance;
+            public static HostFixesServerSendRpcs Instance = null!;
             public HostFixesServerSendRpcs()
             {
                 Instance ??= this;

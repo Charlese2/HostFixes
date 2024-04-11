@@ -91,7 +91,7 @@ namespace HostFixes
         {
             public static void Postfix(GameNetworkManager __instance, ref NetworkManager.ConnectionApprovalRequest request, ref NetworkManager.ConnectionApprovalResponse response)
             {
-                if (!GameNetworkManager.Instance.disableSteam)
+                if (!__instance.disableSteam)
                 {
                     ulong transportId = NetworkManager.Singleton.ConnectionManager.ClientIdToTransportId(request.ClientNetworkId);
 
