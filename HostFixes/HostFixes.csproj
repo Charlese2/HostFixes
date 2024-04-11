@@ -16,7 +16,14 @@
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
       <DebugType>embedded</DebugType>
-      <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./,$([System.IO.Path]::GetFullPath('$(UserProfile)'))=%UserProfile%/</PathMap>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$(UserProfile) != ''">
+        <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./,$([System.IO.Path]::GetFullPath('$(UserProfile)'))=%UserProfile%/"</PathMap>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition="$(HOME) != ''">
+        <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./,$([System.IO.Path]::GetFullPath('$(HOME)'))=~/"</PathMap>
     </PropertyGroup>
 
     <PropertyGroup>
