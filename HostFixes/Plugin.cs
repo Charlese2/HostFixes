@@ -419,7 +419,7 @@ namespace HostFixes
 
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                moons ??= terminal.terminalNodes.allKeywords[26/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
+                moons ??= terminal.terminalNodes.allKeywords[27/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
 
                 try
                 {
