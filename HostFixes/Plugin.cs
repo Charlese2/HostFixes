@@ -94,7 +94,7 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
             SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
-            Log.LogMessage($"{PluginInfo.PLUGIN_NAME} is loaded!");
+            Log.LogMessage($"{PluginInfo.PLUGIN_NAME} v{PluginInfo.PLUGIN_VERSION} is loaded!");
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             new HostFixesServerSendRpcs();
         }
@@ -440,7 +440,7 @@ namespace HostFixes
                 }
                 catch (IndexOutOfRangeException)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) sent levelID ({levelID}) is not in the moons array.");
+                    Log.LogWarning($"Player #{SenderPlayerId} ({username}) sent levelID ({levelID}) that is not in the moons array.");
                     return;
                 }
 

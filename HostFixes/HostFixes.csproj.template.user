@@ -1,10 +1,10 @@
 ﻿<Project>
 	<!-- Local Variables -->
 	<PropertyGroup>
-		<GameDirectory>C:/Program Files (x86)/Steam/steamapps/common/Content Warning</GameDirectory>
+		<GameDirectory>C:\Program Files (x86)\Steam\steamapps\common\Content Warning</GameDirectory>
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<ManagedDirectory>$(GameDirectory)/Content Warning_Data/Managed</ManagedDirectory>
+		<ManagedDirectory>$(GameDirectory)\Content Warning_Data\Managed</ManagedDirectory>
 	</PropertyGroup>
 </Project>

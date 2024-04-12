@@ -11,11 +11,11 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-      <DebugType>portable</DebugType>
+        <DebugType>portable</DebugType>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-      <DebugType>embedded</DebugType>
+        <DebugType>embedded</DebugType>
     </PropertyGroup>
 
     <PropertyGroup Condition="$(UserProfile) != ''">
@@ -40,20 +40,14 @@
     </ItemGroup>
 
     <ItemGroup Condition="$(GameDirectory) != ''">
-        <Reference Include="Assembly-CSharp" Publicize="true" Private="false">
-            <HintPath>$(ManagedDirectory)/Assembly-CSharp.dll</HintPath>
-        </Reference>
+        <Reference Include="$(ManagedDirectory)Assembly-CSharp.dll" Publicize="true" Private="false" />
         <Reference Include="Facepunch Transport for Netcode for GameObjects" Private="false">
-            <HintPath>$(ManagedDirectory)/Facepunch Transport for Netcode for GameObjects.dll</HintPath>
+            <HintPath>$(ManagedDirectory)Facepunch Transport for Netcode for GameObjects.dll</HintPath>
         </Reference>
-        <Reference Include="Facepunch.Steamworks.Win64" Publicize="true" Private="false">
-            <HintPath>$(ManagedDirectory)/Facepunch.Steamworks.Win64.dll</HintPath>
-        </Reference>
-        <Reference Include="Unity.Netcode.Runtime" Publicize="true" Private="false">
-            <HintPath>$(ManagedDirectory)/Unity.Netcode.Runtime.dll</HintPath>
-        </Reference>
+        <Reference Include="$(ManagedDirectory)Facepunch.Steamworks.Win64.dll" Publicize="true" Private="false" />
+        <Reference Include="$(ManagedDirectory)Unity.Netcode.Runtime.dll" Publicize="true" Private="false" />
         <Reference Include="UnityEngine.UI" Private="false">
-            <HintPath>$(ManagedDirectory)/UnityEngine.UI.dll</HintPath>
+            <HintPath>$(ManagedDirectory)UnityEngine.UI.dll</HintPath>
         </Reference>
     </ItemGroup>
 
