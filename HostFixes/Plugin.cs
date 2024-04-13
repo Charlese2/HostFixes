@@ -1262,6 +1262,7 @@ namespace HostFixes
 
             public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
             {
+                Transform interactableTransfrom = instance.transform;
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
@@ -1289,8 +1290,13 @@ namespace HostFixes
                     return;
                 }
 
+                if(instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
+                {
+                    interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
+                }
+
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[SenderPlayerId].transform.position);
-                if (Vector3.Distance(instance.transform.position, player.transform.position) > 5f)
+                if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > 5f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
