@@ -464,11 +464,6 @@ namespace HostFixes
                 }
 
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
-                if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId}") || chatMessage.Equals("[replacewithdata]")))
-                {
-                    HUDManager.Instance.AddPlayerChatMessageServerRpc(chatMessage, playerId);
-                    return;
-                }
 
                 if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
@@ -541,7 +536,8 @@ namespace HostFixes
                     chatMessage.Equals($"{username} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername}... joined the ship.") ||
-                    chatMessage.Equals($"{username} was left behind."))
+                    chatMessage.Equals($"{username} was left behind.") ||
+                    chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId};"))
                 {
                     HUDManager.Instance.AddTextMessageServerRpc(chatMessage);
                 }
