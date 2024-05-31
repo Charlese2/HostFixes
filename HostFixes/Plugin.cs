@@ -23,7 +23,7 @@ namespace HostFixes
     {
         internal static ManualLogSource Log = null!;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
-        internal static CompatibleNoun[]? moons;
+        internal static Dictionary<int, int>? moons;
         internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -420,11 +420,17 @@ namespace HostFixes
 
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                moons ??= terminal.terminalNodes.allKeywords[26/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
+                if (moons == null)
+                {
+                    Dictionary<string, int> moonCost = terminal.terminalNodes.allKeywords[27/*route*/].compatibleNouns
+                        .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
+                        .ToDictionary(compatibleNoun => compatibleNoun.noun.name, compatibleNoun => compatibleNoun.result.itemCost);
+                    moons = StartOfRound.Instance.levels.ToDictionary(moon => moon.levelID, moon => moonCost.GetValueOrDefault(moon.PlanetName.Replace(" ", "-"), 0));
+                }
 
                 try
                 {
-                    int moonCost = moons[levelID].result.itemCost;
+                    int moonCost = moons[levelID];
                     if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
@@ -465,11 +471,6 @@ namespace HostFixes
                 }
 
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
-                if (playerId == 99 && (chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId}") || chatMessage.Equals("[replacewithdata]")))
-                {
-                    HUDManager.Instance.AddPlayerChatMessageServerRpc(chatMessage, playerId);
-                    return;
-                }
 
                 if (StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
@@ -542,7 +543,8 @@ namespace HostFixes
                     chatMessage.Equals($"{username} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername}... joined the ship.") ||
-                    chatMessage.Equals($"{username} was left behind."))
+                    chatMessage.Equals($"{username} was left behind.") ||
+                    chatMessage.StartsWith($"[morecompanycosmetics];{SenderPlayerId};"))
                 {
                     HUDManager.Instance.AddTextMessageServerRpc(chatMessage);
                 }
@@ -1263,6 +1265,7 @@ namespace HostFixes
 
             public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
             {
+                Transform interactableTransfrom = instance.transform;
                 ulong clientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
                 {
@@ -1290,8 +1293,13 @@ namespace HostFixes
                     return;
                 }
 
+                if(instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
+                {
+                    interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
+                }
+
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[SenderPlayerId].transform.position);
-                if (Vector3.Distance(instance.transform.position, player.transform.position) > 5f)
+                if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > 5f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
