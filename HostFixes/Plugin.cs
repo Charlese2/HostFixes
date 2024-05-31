@@ -22,7 +22,7 @@ namespace HostFixes
     {
         internal static ManualLogSource Log = null!;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
-        internal static CompatibleNoun[]? moons;
+        internal static Dictionary<int, int>? moons;
         internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -419,11 +419,17 @@ namespace HostFixes
 
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                moons ??= terminal.terminalNodes.allKeywords[27/*route*/].compatibleNouns.GroupBy(moon => moon.noun).Select(noun => noun.First()).ToArray();// Remove duplicate moons from moons array.
+                if (moons == null)
+                {
+                    Dictionary<string, int> moonCost = terminal.terminalNodes.allKeywords[27/*route*/].compatibleNouns
+                        .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
+                        .ToDictionary(compatibleNoun => compatibleNoun.noun.name, compatibleNoun => compatibleNoun.result.itemCost);
+                    moons = StartOfRound.Instance.levels.ToDictionary(moon => moon.levelID, moon => moonCost.GetValueOrDefault(moon.PlanetName.Replace(" ", "-"), 0));
+                }
 
                 try
                 {
-                    int moonCost = moons[levelID].result.itemCost;
+                    int moonCost = moons[levelID];
                     if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
