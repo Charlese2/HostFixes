@@ -106,7 +106,7 @@ namespace HostFixes
 
             foreach (PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
             {
-                if (player.isPlayerDead || !player.isPlayerControlled) 
+                if (player.isPlayerDead || !player.isPlayerControlled)
                 {
                     return;
                 }
@@ -1286,7 +1286,7 @@ namespace HostFixes
                     return;
                 }
 
-                if(instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
+                if (instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
                 {
                     interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
                 }
@@ -1693,7 +1693,7 @@ namespace HostFixes
                 }
 
                 float vehicleExitDistance = Vector3.Distance(exitPoint, instance.transform.position);
-                if (vehicleExitDistance > 10f )
+                if (vehicleExitDistance > 10f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) exited from the vehicle too far away. ({vehicleExitDistance})");
                 }
@@ -1853,7 +1853,7 @@ namespace HostFixes
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
-                if(instance.OwnerClientId != senderClientId)
+                if (instance.OwnerClientId != senderClientId)
                 {
                     return;
                 }
@@ -1949,7 +1949,7 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
                 if (instance.OwnerClientId != senderClientId && vehicleDistance > 10f)
-                { 
+                {
                     return;
                 }
 
@@ -2049,7 +2049,7 @@ namespace HostFixes
                         found = true;
                     }
 
-                    if(codes.Count > 1000)
+                    if (codes.Count > 1000)
                     {
                         throw new Exception("Stuck in infinite loop while patching.");
                     }
@@ -3456,7 +3456,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetMagnetOnServerRpc_Transpile
             {
@@ -3491,7 +3491,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class BuyVehicleServerRpc_Transpile
             {
@@ -3526,7 +3526,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RemoveKeyFromIgnitionServerRpc_Transpile
             {
@@ -3561,7 +3561,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RevCarServerRpc_Transpile
             {
@@ -3596,7 +3596,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class StartIgnitionServerRpc_Transpile
             {
@@ -3631,7 +3631,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CancelTryIgnitionServerRpc_Transpile
             {
@@ -3666,7 +3666,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PassengerLeaveVehicleServerRpc_Transpile
             {
@@ -3701,7 +3701,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetPlayerInControlOfVehicleServerRpc_Transpile
             {
@@ -3736,7 +3736,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RemovePlayerControlOfVehicleServerRpc_Transpile
             {
@@ -3771,7 +3771,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class ShiftToGearServerRpc_Transpile
             {
@@ -3806,7 +3806,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetHonkServerRpc_Transpile
             {
@@ -3841,7 +3841,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetRadioStationServerRpc_Transpile
             {
@@ -3876,7 +3876,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetRadioOnServerRpc_Transpile
             {
@@ -3911,7 +3911,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CarBumpServerRpc_Transpile
             {
@@ -3946,7 +3946,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CarCollisionServerRpc_Transpile
             {
@@ -3981,7 +3981,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class DestroyCarServerRpc_Transpile
             {
@@ -4016,7 +4016,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PushTruckServerRpc_Transpile
             {
@@ -4051,7 +4051,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PushTruckFromOwnerServerRpc_Transpile
             {
@@ -4086,7 +4086,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetHoodOpenServerRpc_Transpile
             {
@@ -4121,7 +4121,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class ToggleHeadlightsServerRpc_Transpile
             {
@@ -4156,7 +4156,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SpringDriverSeatServerRpc_Transpile
             {
