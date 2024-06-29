@@ -1552,6 +1552,7 @@ namespace HostFixes
 
                 if (instance.OwnerClientId != senderClientId)
                 {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling BreakTreeServerRpc without being the owner.");
                     return;
                 }
 
@@ -1958,9 +1959,16 @@ namespace HostFixes
             public void CarBumpServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-
-                if(instance.OwnerClientId != senderClientId)
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
+                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
+                if (instance.OwnerClientId != senderClientId)
+                {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling CarBumpServerRpc without being the owner.");
                     return;
                 }
 
@@ -1970,9 +1978,16 @@ namespace HostFixes
             public void CarCollisionServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                {
+                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
 
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if (instance.OwnerClientId != senderClientId)
                 {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling CarCollisionServerRpc without being the owner.");
                     return;
                 }
 
@@ -1997,6 +2012,7 @@ namespace HostFixes
 
                 if (instance.OwnerClientId != senderClientId)
                 {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling DestroyCarServerRpc without being the owner.");
                     return;
                 }
 
@@ -2055,7 +2071,8 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
                 if (instance.OwnerClientId != senderClientId && vehicleDistance > 10f)
-                { 
+                {
+                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling SetHoodOpenServerRpc without being the owner.");
                     return;
                 }
 
