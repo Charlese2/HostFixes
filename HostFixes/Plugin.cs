@@ -1109,13 +1109,6 @@ namespace HostFixes
 
             public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[UpdatePlayerPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
                 if (instance.isPlayerDead)
                 {
                     allowedMovement[instance.playerClientId] = false;
@@ -1507,13 +1500,6 @@ namespace HostFixes
 
             public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
             {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[ActivateItemServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
                 if (itemOnCooldown.Contains(instance.NetworkObjectId))
                 {
                     return;
@@ -1951,13 +1937,7 @@ namespace HostFixes
             public void CarBumpServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[CarBumpServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
 
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if(instance.OwnerClientId != senderClientId)
                 {
                     return;
@@ -1969,13 +1949,7 @@ namespace HostFixes
             public void CarCollisionServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[CarCollisionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
 
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 if (instance.OwnerClientId != senderClientId)
                 {
                     return;
