@@ -1552,7 +1552,7 @@ namespace HostFixes
                 {
                     int cost = instance.buyableVehicles[vehicleID].creditsWorth;
                     int spent = instance.groupCredits - newGroupCredits;
-                    if (cost != spent)
+                    if (cost != spent && !instance.hasWarrantyTicket)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) credits spent does not equal cost of vehicle. Current credits: {instance.groupCredits} Vehicle cost: {cost} Spent: {spent}.");
                         return;
