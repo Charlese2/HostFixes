@@ -250,10 +250,10 @@ namespace HostFixes
         {
             public void BuyItemsServerRpc(int[] boughtItems, int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[BuyItemsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[BuyItemsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -307,14 +307,14 @@ namespace HostFixes
 
             public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SyncGroupCreditsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SyncGroupCreditsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0 || newGroupCredits < instance.groupCredits)
+                if (senderClientId == 0 || newGroupCredits < instance.groupCredits)
                 {
                     instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
                 }
@@ -334,15 +334,15 @@ namespace HostFixes
 
             public void BuyShipUnlockableServerRpc(int unlockableID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[BuyShipUnlockableServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[BuyShipUnlockableServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     StartOfRound.Instance.BuyShipUnlockableServerRpc(unlockableID, newGroupCreditsAmount);
                     return;
@@ -370,7 +370,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (clientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
+                if (senderClientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount for unlockable. Current credits: {terminal.groupCredits} Unlockable cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
                     return;
@@ -382,16 +382,16 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{clientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted credit value: {newGroupCreditsAmount} Old credit value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{senderClientId} ({StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted credit value: {newGroupCreditsAmount} Old credit value: {terminal.groupCredits}");
                 }
             }
 
             public void ChangeLevelServerRpc(int levelID, int newGroupCreditsAmount, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ChangeLevelServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ChangeLevelServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
@@ -431,7 +431,7 @@ namespace HostFixes
                 try
                 {
                     int moonCost = moons[levelID];
-                    if (clientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
+                    if (senderClientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
                         return;
@@ -462,11 +462,11 @@ namespace HostFixes
                 }
 
                 string sanitizedChatMessage;
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from clientId: ({clientId}) Message: ({chatMessage})");
+                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from senderClientId: ({senderClientId}) Message: ({chatMessage})");
                     return;
                 }
 
@@ -513,10 +513,10 @@ namespace HostFixes
 
             public void AddTextMessageServerRpc(string chatMessage, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[AddTextMessageServerRpc] Failed to get the playerId from clientId: ({clientId}) Message: ({chatMessage})");
+                    Log.LogError($"[AddTextMessageServerRpc] Failed to get the playerId from senderClientId: ({senderClientId}) Message: ({chatMessage})");
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
@@ -539,7 +539,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (clientId == 0 ||
+                if (senderClientId == 0 ||
                     chatMessage.Equals($"{username} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername} joined the ship.") ||
                     chatMessage.Equals($"{steamUsername}... joined the ship.") ||
@@ -556,16 +556,16 @@ namespace HostFixes
 
             public void SetShipLeaveEarlyServerRpc(ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetShipLeaveEarlyServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetShipLeaveEarlyServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (!votedToLeaveEarlyPlayers.Contains(clientId) && StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
+                if (!votedToLeaveEarlyPlayers.Contains(senderClientId) && StartOfRound.Instance.allPlayerScripts[SenderPlayerId].isPlayerDead)
                 {
-                    votedToLeaveEarlyPlayers.Add(clientId);
+                    votedToLeaveEarlyPlayers.Add(senderClientId);
                     int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
                     if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, configMinimumVotesToLeaveEarly.Value))
                     {
@@ -586,10 +586,10 @@ namespace HostFixes
 
             public void PlaceShipObjectServerRpc(Vector3 newPosition, Vector3 newRotation, NetworkObjectReference objectRef, int playerWhoMoved, ShipBuildModeManager instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PlaceShipObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PlaceShipObjectServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -645,14 +645,14 @@ namespace HostFixes
 
             public void DespawnEnemyServerRpc(NetworkObjectReference enemyNetworkObject, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[DespawnEnemyServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[DespawnEnemyServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     RoundManager.Instance.DespawnEnemyServerRpc(enemyNetworkObject);
                 }
@@ -664,10 +664,10 @@ namespace HostFixes
 
             public void EndGameServerRpc(int playerClientId, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[EndGameServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[EndGameServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -713,7 +713,7 @@ namespace HostFixes
 
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PlayerLoadedServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PlayerLoadedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -744,7 +744,7 @@ namespace HostFixes
 
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[FinishedGeneratingLevelServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[FinishedGeneratingLevelServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -801,16 +801,16 @@ namespace HostFixes
 
             public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[DamagePlayerFromOtherClientServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[DamagePlayerFromOtherClientServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
                 PlayerControllerB sendingPlayer = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
-                if (clientId == 0 && playerWhoHit == -1) //Lethal Escape compatibility
+                if (senderClientId == 0 && playerWhoHit == -1) //Lethal Escape compatibility
                 {
                     instance.DamagePlayerFromOtherClientServerRpc(damageAmount, hitDirection, playerWhoHit);
                     return;
@@ -859,10 +859,10 @@ namespace HostFixes
 
             public void ShootGunServerRpc(Vector3 shotgunPosition, Vector3 shotgunForward, ShotgunItem instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ShootGunServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ShootGunServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -885,10 +885,10 @@ namespace HostFixes
 
             public void ReloadGunEffectsServerRpc(bool start, ShotgunItem instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ReloadGunEffectsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ReloadGunEffectsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -917,10 +917,10 @@ namespace HostFixes
 
             public void GrabObjectServerRpc(NetworkObjectReference grabbedObject, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[GrabObjectServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[GrabObjectServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -961,14 +961,14 @@ namespace HostFixes
 
             public void SetShipLightsServerRpc(bool setLightsOn, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetShipLightsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetShipLightsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     StartOfRound.Instance.shipRoomLights.SetShipLightsServerRpc(setLightsOn);
                     return;
@@ -992,10 +992,10 @@ namespace HostFixes
 
             public void UseSignalTranslatorServerRpc(string signalMessage, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[UseSignalTranslatorServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[UseSignalTranslatorServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
                 string username = StartOfRound.Instance.allPlayerScripts[SenderPlayerId].playerUsername;
@@ -1015,14 +1015,14 @@ namespace HostFixes
 
             public void TeleportPlayerServerRpc(int playerObj, EntranceTeleport instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[TeleportPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[TeleportPlayerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     instance.TeleportPlayerServerRpc(playerObj);
                     return;
@@ -1058,10 +1058,10 @@ namespace HostFixes
 
             public void PressTeleportButtonServerRpc(ShipTeleporter instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PressTeleportButtonServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PressTeleportButtonServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1089,10 +1089,10 @@ namespace HostFixes
             public void TeleportPlayerOutServerRpc(int playerObj, Vector3 teleportPos, ShipTeleporter instance, ServerRpcParams serverRpcParams)
             {
 
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[TeleportPlayerOutServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[TeleportPlayerOutServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1109,10 +1109,10 @@ namespace HostFixes
 
             public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[UpdatePlayerPositionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[UpdatePlayerPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1217,14 +1217,14 @@ namespace HostFixes
 
             public void UpdateUsedByPlayerServerRpc(int playerNum, InteractTrigger instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[UpdateUsedByPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[UpdateUsedByPlayerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     instance.UpdateUsedByPlayerServerRpc(playerNum);
                     return;
@@ -1241,14 +1241,14 @@ namespace HostFixes
 
             public void StopUsingServerRpc(int playerUsing, InteractTrigger instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[StopUsingServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[StopUsingServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     instance.StopUsingServerRpc(playerUsing);
                     return;
@@ -1266,14 +1266,14 @@ namespace HostFixes
             public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
             {
                 Transform interactableTransfrom = instance.transform;
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[UpdateAnimServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[UpdateAnimServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     instance.UpdateAnimServerRpc(setBool, playSecondaryAudios, playerWhoTriggered);
                     return;
@@ -1302,7 +1302,7 @@ namespace HostFixes
                 if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > 5f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
                     return;
                 }
@@ -1312,10 +1312,10 @@ namespace HostFixes
 
             public void UpdateAnimTriggerServerRpc(AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[UpdateAnimTriggerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[UpdateAnimTriggerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1324,10 +1324,10 @@ namespace HostFixes
 
             public void SyncAllPlayerLevelsServerRpc(int newPlayerLevel, int playerClientId, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SyncAllPlayerLevelsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SyncAllPlayerLevelsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1344,10 +1344,10 @@ namespace HostFixes
 
             public void StartGameServerRpc(StartOfRound instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[StartGameServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[StartGameServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1377,10 +1377,10 @@ namespace HostFixes
 
             public void PlayLeverPullEffectsServerRpc(bool leverPulled, StartMatchLever instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PlayLeverPullEffectsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PlayLeverPullEffectsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1401,7 +1401,7 @@ namespace HostFixes
                 float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
                 if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [clientId] } };
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.PlayLeverPullEffectsClientRpc(leverPulled, instance, clientRpcParams);
                     return;
                 }
@@ -1411,10 +1411,10 @@ namespace HostFixes
 
             public void SyncAlreadyHeldObjectsServerRpc(int joiningClientId, StartOfRound instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SyncAlreadyHeldObjectsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SyncAlreadyHeldObjectsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1423,10 +1423,10 @@ namespace HostFixes
 
             public void SyncShipUnlockablesServerRpc(StartOfRound instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SyncShipUnlockablesServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SyncShipUnlockablesServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1457,10 +1457,10 @@ namespace HostFixes
 
             public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[CheckAnimationGrabPlayerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[CheckAnimationGrabPlayerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1476,15 +1476,15 @@ namespace HostFixes
 
             public void AttackPlayersServerRpc(DepositItemsDesk instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[AttackPlayersServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[AttackPlayersServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                if (clientId != 0)
+                if (senderClientId != 0)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling AttackPlayersServerRpc.");
                     return;
@@ -1507,10 +1507,10 @@ namespace HostFixes
 
             public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ActivateItemServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ActivateItemServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1529,10 +1529,10 @@ namespace HostFixes
 
             public void BreakTreeServerRpc(Vector3 pos, int playerWhoSent, RoundManager instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[BreakTreeServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[BreakTreeServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1555,10 +1555,10 @@ namespace HostFixes
 
             public void StartKillingWeedServerRpc(Vector3 atPosition, SprayPaintItem instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[StartKillingWeedServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[StartKillingWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1576,10 +1576,10 @@ namespace HostFixes
 
             public void StopKillingWeedServerRpc(SprayPaintItem instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[StopKillingWeedServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[StopKillingWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1596,10 +1596,10 @@ namespace HostFixes
 
             public void KillWeedServerRpc(Vector3 weedPos, SprayPaintItem instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[KillWeedServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[KillWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1616,10 +1616,10 @@ namespace HostFixes
 
             public void SetMagnetOnServerRpc(bool on, StartOfRound instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetMagnetOnServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetMagnetOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1635,15 +1635,15 @@ namespace HostFixes
 
             public void BuyVehicleServerRpc(int vehicleID, int newGroupCredits, bool useWarranty, Terminal instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[BuyVehicleServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[BuyVehicleServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                if (clientId == 0)
+                if (senderClientId == 0)
                 {
                     instance.BuyVehicleServerRpc(vehicleID, newGroupCredits, useWarranty);
                     return;
@@ -1670,10 +1670,10 @@ namespace HostFixes
 
             public void RemoveKeyFromIgnitionServerRpc(int driverId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[RemoveKeyFromIgnitionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[RemoveKeyFromIgnitionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1696,10 +1696,10 @@ namespace HostFixes
 
             public void RevCarServerRpc(int driverId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[RevCarServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[RevCarServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1722,10 +1722,10 @@ namespace HostFixes
 
             public void StartIgnitionServerRpc(int driverId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[StartIgnitionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[StartIgnitionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1748,10 +1748,10 @@ namespace HostFixes
 
             public void CancelTryIgnitionServerRpc(int driverId, bool setKeyInSlot, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[CancelTryIgnitionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[CancelTryIgnitionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1779,10 +1779,10 @@ namespace HostFixes
 
             public void PassengerLeaveVehicleServerRpc(int playerId, Vector3 exitPoint, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PassengerLeaveVehicleServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PassengerLeaveVehicleServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1804,10 +1804,10 @@ namespace HostFixes
 
             public void SetPlayerInControlOfVehicleServerRpc(int playerId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetPlayerInControlOfVehicleServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetPlayerInControlOfVehicleServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1830,10 +1830,10 @@ namespace HostFixes
 
             public void RemovePlayerControlOfVehicleServerRpc(int playerId, Vector3 carLocation, Quaternion carRotation, bool setKeyInIgnition, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[RemovePlayerControlOfVehicleServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[RemovePlayerControlOfVehicleServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1861,10 +1861,10 @@ namespace HostFixes
 
             public void ShiftToGearServerRpc(int setGear, int playerId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ShiftToGearServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ShiftToGearServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1880,10 +1880,10 @@ namespace HostFixes
 
             public void SetHonkServerRpc(bool honk, int playerId, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetHonkServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetHonkServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1906,10 +1906,10 @@ namespace HostFixes
 
             public void SetRadioStationServerRpc(int radioStation, int signalQuality, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetRadioStationServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetRadioStationServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1932,10 +1932,10 @@ namespace HostFixes
 
             public void SetRadioOnServerRpc(bool on, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1952,10 +1952,10 @@ namespace HostFixes
 
             public void CarBumpServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[CarBumpServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[CarBumpServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1972,10 +1972,10 @@ namespace HostFixes
 
             public void CarCollisionServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[CarCollisionServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[CarCollisionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1992,10 +1992,10 @@ namespace HostFixes
 
             public void DestroyCarServerRpc(int sentByClient, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[DestroyCarServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[DestroyCarServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2018,10 +2018,10 @@ namespace HostFixes
 
             public void PushTruckServerRpc(Vector3 pos, Vector3 dir, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PushTruckServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PushTruckServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2038,10 +2038,10 @@ namespace HostFixes
 
             public void PushTruckFromOwnerServerRpc(Vector3 pos, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[PushTruckFromOwnerServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[PushTruckFromOwnerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2058,10 +2058,10 @@ namespace HostFixes
 
             public void SetHoodOpenServerRpc(bool open, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[SetHoodOpenServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SetHoodOpenServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2078,10 +2078,10 @@ namespace HostFixes
 
             public void ToggleHeadlightsServerRpc(bool setLightsOn, VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ToggleHeadlightsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[ToggleHeadlightsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2098,10 +2098,10 @@ namespace HostFixes
 
             public void SpringDriverSeatServerRpc(VehicleController instance, ServerRpcParams serverRpcParams)
             {
-                ulong clientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(clientId, out int SenderPlayerId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
                 {
-                    Log.LogError($"[ToggleHeadlightsServerRpc] Failed to get the playerId from clientId: {clientId}");
+                    Log.LogError($"[SpringDriverSeatServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
