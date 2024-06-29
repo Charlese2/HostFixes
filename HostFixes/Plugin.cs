@@ -107,7 +107,7 @@ namespace HostFixes
 
             foreach (PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
             {
-                if (player.isPlayerDead || !player.isPlayerControlled) 
+                if (player.isPlayerDead || !player.isPlayerControlled)
                 {
                     return;
                 }
@@ -1287,7 +1287,7 @@ namespace HostFixes
                     return;
                 }
 
-                if(instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
+                if (instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
                 {
                     interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
                 }
@@ -1534,92 +1534,6 @@ namespace HostFixes
                 instance.HitEnemyServerRpc(force, SenderPlayerId, playHitSFX, hitID);
             }
 
-            public void BreakTreeServerRpc(Vector3 pos, int playerWhoSent, RoundManager instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[BreakTreeServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                if (playerWhoSent != SenderPlayerId)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried spoofing BreakTreeServerRpc on another player. ({playerWhoSent})");
-                    return;
-                }
-
-                if (instance.OwnerClientId != senderClientId)
-                {
-                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling BreakTreeServerRpc without being the owner.");
-                    return;
-                }
-
-                instance.BreakTreeServerRpc(pos, playerWhoSent);
-            }
-
-            public void StartKillingWeedServerRpc(Vector3 atPosition, SprayPaintItem instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[StartKillingWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float weedDistance = Vector3.Distance(player.transform.position, atPosition);
-                if (weedDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to start killing a weed from too far away. ({weedDistance})");
-                    return;
-                }
-
-                killingWeed.Add(SenderPlayerId, true);
-                instance.StartKillingWeedServerRpc(atPosition);
-            }
-
-            public void StopKillingWeedServerRpc(SprayPaintItem instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[StopKillingWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-
-                if (killingWeed.Remove(SenderPlayerId) == false)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to stop killing a weed without starting.");
-                    return;
-                }
-
-                instance.StopKillingWeedServerRpc();
-            }
-
-            public void KillWeedServerRpc(Vector3 weedPos, SprayPaintItem instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[KillWeedServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float weedDistance = Vector3.Distance(player.transform.position, weedPos);
-                if (weedDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried killing a weed from too far away. ({weedDistance})");
-                    return;
-                }
-
-                instance.KillWeedServerRpc(weedPos);
-            }
-
             public void SetMagnetOnServerRpc(bool on, StartOfRound instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1800,7 +1714,7 @@ namespace HostFixes
                 }
 
                 float vehicleExitDistance = Vector3.Distance(exitPoint, instance.transform.position);
-                if (vehicleExitDistance > 10f )
+                if (vehicleExitDistance > 10f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) exited from the vehicle too far away. ({vehicleExitDistance})");
                 }
@@ -2172,7 +2086,7 @@ namespace HostFixes
                         found = true;
                     }
 
-                    if(codes.Count > 1000)
+                    if (codes.Count > 1000)
                     {
                         throw new Exception("Stuck in infinite loop while patching.");
                     }
@@ -3613,148 +3527,8 @@ namespace HostFixes
 
                     return codes.AsEnumerable();
                 }
-                }
-
-            [HarmonyPatch]
-            class BreakTreeServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(RoundManager), "__rpc_handler_759068055")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "BreakTreeServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.BreakTreeServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch BreakTreeServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
             }
 
-            [HarmonyPatch]
-            class StartKillingWeedServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(SprayPaintItem), "__rpc_handler_1299951927")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "StartKillingWeedServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.StartKillingWeedServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch StartKillingWeedServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class StopKillingWeedServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(SprayPaintItem), "__rpc_handler_3462977352")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "StopKillingWeedServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.StopKillingWeedServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch StopKillingWeedServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class KillWeedServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(SprayPaintItem), "__rpc_handler_3734429847")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "KillWeedServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.KillWeedServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch KillWeedServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-            
             [HarmonyPatch]
             class SetMagnetOnServerRpc_Transpile
             {
@@ -3789,7 +3563,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class BuyVehicleServerRpc_Transpile
             {
@@ -3824,7 +3598,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RemoveKeyFromIgnitionServerRpc_Transpile
             {
@@ -3859,7 +3633,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RevCarServerRpc_Transpile
             {
@@ -3894,7 +3668,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class StartIgnitionServerRpc_Transpile
             {
@@ -3929,7 +3703,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CancelTryIgnitionServerRpc_Transpile
             {
@@ -3964,7 +3738,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PassengerLeaveVehicleServerRpc_Transpile
             {
@@ -3999,7 +3773,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetPlayerInControlOfVehicleServerRpc_Transpile
             {
@@ -4034,7 +3808,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class RemovePlayerControlOfVehicleServerRpc_Transpile
             {
@@ -4069,7 +3843,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class ShiftToGearServerRpc_Transpile
             {
@@ -4104,7 +3878,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetHonkServerRpc_Transpile
             {
@@ -4139,7 +3913,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetRadioStationServerRpc_Transpile
             {
@@ -4174,7 +3948,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetRadioOnServerRpc_Transpile
             {
@@ -4209,7 +3983,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CarBumpServerRpc_Transpile
             {
@@ -4244,7 +4018,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class CarCollisionServerRpc_Transpile
             {
@@ -4279,7 +4053,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class DestroyCarServerRpc_Transpile
             {
@@ -4314,7 +4088,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PushTruckServerRpc_Transpile
             {
@@ -4349,7 +4123,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class PushTruckFromOwnerServerRpc_Transpile
             {
@@ -4384,7 +4158,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SetHoodOpenServerRpc_Transpile
             {
@@ -4419,7 +4193,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class ToggleHeadlightsServerRpc_Transpile
             {
@@ -4454,7 +4228,7 @@ namespace HostFixes
                     return codes.AsEnumerable();
                 }
             }
-            
+
             [HarmonyPatch]
             class SpringDriverSeatServerRpc_Transpile
             {
