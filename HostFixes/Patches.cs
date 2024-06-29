@@ -3,6 +3,10 @@ using HarmonyLib;
 using Netcode.Transports.Facepunch;
 using Steamworks;
 using Steamworks.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using Unity.Netcode;
 using UnityEngine;
 using static HostFixes.Plugin;
@@ -11,6 +15,39 @@ namespace HostFixes
 {
     internal class Patches
     {
+        [HarmonyPatch(typeof(Terminal), "Start")]
+        internal static class TerminalStart_Patch
+        {
+            [HarmonyTranspiler]
+            public static IEnumerable<CodeInstruction> FixHostSales(IEnumerable<CodeInstruction> instructions)
+            {
+                var found = false;
+                var callLocation = -1;
+                var codes = new List<CodeInstruction>(instructions);
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "InitializeItemSalesPercentages" })
+                    {
+                        callLocation = i;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found)
+                {
+                    codes.RemoveAt(callLocation); //Remove call
+                    codes.RemoveAt(callLocation - 1); //Remove argument
+                }
+                else
+                {
+                    Log.LogError("Could not patch Terminal.Start");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(FacepunchTransport), "Steamworks.ISocketManager.OnConnecting")]
         class Identity_Fix
