@@ -1543,10 +1543,8 @@ namespace HostFixes
                     return;
                 }
 
-                float treeDistance = Vector3.Distance(player.transform.position, pos);
-                if (treeDistance > 10f)
+                if (instance.OwnerClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried breaking a tree from too far away. ({treeDistance})");
                     return;
                 }
 
@@ -1960,10 +1958,8 @@ namespace HostFixes
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
+                if(instance.OwnerClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call CarBumpServerRpc from too far away. ({vehicleDistance})");
                     return;
                 }
 
@@ -1980,10 +1976,8 @@ namespace HostFixes
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
+                if (instance.OwnerClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to call CarCollisionServerRpc from too far away. ({vehicleDistance})");
                     return;
                 }
 
@@ -2006,10 +2000,8 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
+                if (instance.OwnerClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to destory the vehicle from too far away. ({vehicleDistance})");
                     return;
                 }
 
@@ -2067,9 +2059,8 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to open vehicle hood from too far away. ({vehicleDistance})");
+                if (instance.OwnerClientId != senderClientId && vehicleDistance > 10f)
+                { 
                     return;
                 }
 
