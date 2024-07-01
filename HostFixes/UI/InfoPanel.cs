@@ -1,4 +1,5 @@
 ﻿using BepInEx.Logging;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,10 +14,7 @@ namespace HostFixes.UI
         private Queue logQueue = new(10);
         public InfoPanel()
         {
-            if (Instance is null)
-            {
-                Instance = this;
-            }
+            Instance ??= this;
 
             GameObjectInstance = new GameObject("InfoPanel");
             GameObjectInstance.transform.SetParent(GameObject.Find("Systems/UI/Canvas").transform);
@@ -50,6 +48,7 @@ namespace HostFixes.UI
             {
                 Plugin.Log.LogError("test is null");
             }
+            Plugin.Log.LogEvent -= Log_LogEvent;
             Plugin.Log.LogEvent += Log_LogEvent;
         }
 
@@ -62,15 +61,22 @@ namespace HostFixes.UI
 
         public void Log(object data)
         {
-            if (logQueue.Count == 10)
+            try
             {
-                logQueue.Dequeue();
+                if (logQueue.Count == 10)
+                {
+                    logQueue.Dequeue();
+                }
+                logQueue.Enqueue(data.ToString());
+                MyText.text = "";
+                foreach (string log in logQueue)
+                {
+                    MyText.text += $"{log}\n";
+                }
             }
-            logQueue.Enqueue(data.ToString());
-            MyText.text = "";
-            foreach (string log in logQueue)
+            catch (Exception e)
             {
-                MyText.text += $"{log}\n";
+                Plugin.Log.LogError(e);
             }
         }
     }
