@@ -1668,11 +1668,6 @@ namespace HostFixes
                     return;
                 }
 
-                if (setKeyInSlot != instance.keyIsInIgnition)
-                {
-                    Log.LogDebug("setKeyInSlot != instance.keyIsInIgnition");
-                }
-
                 instance.CancelTryIgnitionServerRpc(driverId, instance.keyIsInIgnition);
             }
 
@@ -1690,12 +1685,6 @@ namespace HostFixes
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried spoofing PassengerLeaveVehicleServerRpc on another player. ({playerId})");
                     return;
-                }
-
-                float vehicleExitDistance = Vector3.Distance(exitPoint, instance.transform.position);
-                if (vehicleExitDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) exited from the vehicle too far away. ({vehicleExitDistance})");
                 }
 
                 instance.PassengerLeaveVehicleServerRpc(SenderPlayerId, exitPoint);
@@ -1721,6 +1710,8 @@ namespace HostFixes
                 if (vehicleDistance > 10f)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried take control of vehicle from too far away. ({vehicleDistance})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.CancelPlayerInControlOfVehicleClientRpc(SenderPlayerId, instance, clientRpcParams);
                     return;
                 }
 
@@ -2024,6 +2015,16 @@ namespace HostFixes
                     bufferWriter.WriteValueSafe(in playSecondaryAudios, default);
                     bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
+                }
+            }
+
+            public void CancelPlayerInControlOfVehicleClientRpc(int playerId, VehicleController instance, ClientRpcParams clientRpcParams)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(Instance, [1621098866u, clientRpcParams, RpcDelivery.Reliable]);
+                    BytePacker.WriteValueBitPacked(bufferWriter, playerId);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 1621098866u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
