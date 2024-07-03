@@ -1844,7 +1844,7 @@ namespace HostFixes
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
-                if (instance.OwnerClientId != senderClientId)
+                if (senderClientId != 0)
                 {
                     return;
                 }
@@ -1856,7 +1856,7 @@ namespace HostFixes
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
-                if (instance.OwnerClientId != senderClientId)
+                if (senderClientId != 0)
                 {
                     return;
                 }
