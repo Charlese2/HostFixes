@@ -1852,7 +1852,7 @@ namespace HostFixes
                 instance.CarBumpServerRpc(vel);
             }
 
-            public void CarCollisionServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
+            public void CarCollisionServerRpc(Vector3 vel, float magn, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
 
@@ -1861,7 +1861,7 @@ namespace HostFixes
                     return;
                 }
 
-                instance.CarCollisionServerRpc(vel);
+                instance.CarCollisionServerRpc(vel, magn);
             }
 
             public void DestroyCarServerRpc(int sentByClient, VehicleController instance, ServerRpcParams serverRpcParams)
@@ -3951,7 +3951,7 @@ namespace HostFixes
             [HarmonyPatch]
             class CarCollisionServerRpc_Transpile
             {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_1561649658")]
+                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_2778459828")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
