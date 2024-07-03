@@ -14,7 +14,7 @@ namespace HostFixes.UI
         private Queue logQueue = new(10);
         public InfoPanel()
         {
-            Instance ??= this;
+            Instance = this;
 
             GameObjectInstance = new GameObject("InfoPanel");
             GameObjectInstance.transform.SetParent(GameObject.Find("Systems/UI/Canvas").transform);
@@ -48,11 +48,10 @@ namespace HostFixes.UI
             {
                 Plugin.Log.LogError("test is null");
             }
-            Plugin.Log.LogEvent -= Log_LogEvent;
             Plugin.Log.LogEvent += Log_LogEvent;
         }
 
-        private void Log_LogEvent(object sender, LogEventArgs logEvent)
+        internal void Log_LogEvent(object sender, LogEventArgs logEvent)
         {
             if (logEvent.Level is not LogLevel.Warning) return;
 
