@@ -1365,6 +1365,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (GameNetworkManager.Instance.gameHasStarted == false)
+                {
+                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to force start the game.");
+                    return;
+                }
+
                 instance.StartGameServerRpc();
             }
 
