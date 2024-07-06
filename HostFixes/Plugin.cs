@@ -868,7 +868,7 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
 
-                if (Vector3.Distance(instance.transform.position, shotgunPosition) > 5f)
+                if (Vector3.Distance(instance.transform.position, shotgunPosition) > player.grabDistance + 7)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to shoot shotgun from too far away from shotgun position.");
                     return;
@@ -944,7 +944,7 @@ namespace HostFixes
                     GameObject grabbedGameObject = (GameObject)grabbedObject;
                     float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
                     bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
-                    if (distanceToObject > instance.grabDistance * 2 && isNotBody)
+                    if (distanceToObject > instance.grabDistance + 7 && isNotBody)
                     {
                         Log.LogWarning($"Player #{SenderPlayerId} ({username}) Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
                         instance.GrabObjectClientRpc(false, grabbedObject);
@@ -1292,7 +1292,7 @@ namespace HostFixes
                 }
 
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[SenderPlayerId].transform.position);
-                if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > 5f)
+                if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > player.grabDistance + 7)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
