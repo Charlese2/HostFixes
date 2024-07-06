@@ -840,7 +840,7 @@ namespace HostFixes
 
                 bool shovelHitForceIsUnmodified = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include)?.shovelHitForce == 1;
 
-                if (shovelHitForceIsUnmodified && damageAmount > 10)
+                if (shovelHitForceIsUnmodified && damageAmount > 20)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({username}) tried to damage ({instance.playerUsername}) for extra damage ({damageAmount})");
                     return;
