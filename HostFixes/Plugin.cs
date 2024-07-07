@@ -30,7 +30,6 @@ namespace HostFixes
         internal static Dictionary<ulong, bool> onShip = [];
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
         internal static bool terminalSoundPlaying;
-        internal static Dictionary<int, bool> killingWeed = [];
 
         public static ConfigEntry<int> configMinimumVotesToLeaveEarly = null!;
         public static ConfigEntry<bool> configDisablePvpInShip = null!;
@@ -1589,13 +1588,6 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to remove key from the ignition from too far away. ({vehicleDistance})");
-                    return;
-                }
-
                 instance.RemoveKeyFromIgnitionServerRpc(SenderPlayerId);
             }
 
@@ -1612,13 +1604,6 @@ namespace HostFixes
                 if (driverId != SenderPlayerId)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried spoofing RevCarServerRpc on another player. ({driverId})");
-                    return;
-                }
-
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to rev car engine from too far away. ({vehicleDistance})");
                     return;
                 }
 
@@ -1869,16 +1854,6 @@ namespace HostFixes
                     bufferWriter.WriteValueSafe(in playSecondaryAudios, default);
                     bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
-                }
-            }
-
-            public void CancelPlayerInControlOfVehicleClientRpc(int playerId, VehicleController instance, ClientRpcParams clientRpcParams)
-            {
-                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
-                {
-                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(Instance, [1621098866u, clientRpcParams, RpcDelivery.Reliable]);
-                    BytePacker.WriteValueBitPacked(bufferWriter, playerId);
-                    EndSendClientRpc.Invoke(instance, [bufferWriter, 1621098866u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
