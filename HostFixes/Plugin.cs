@@ -1530,7 +1530,7 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
                 float magnetDistance = Vector3.Distance(player.transform.position, instance.magnetLever.transform.position);
-                if (magnetDistance > 5f)
+                if (magnetDistance > player.grabDistance + 7)
                 {
                     Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to toggle magnet from to far away. ({magnetDistance})");
                 }
@@ -1641,13 +1641,6 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to start car ignition from too far away. ({vehicleDistance})");
-                    return;
-                }
-
                 instance.StartIgnitionServerRpc(SenderPlayerId);
             }
 
@@ -1667,14 +1660,7 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to cancel starting car ignition from too far away. ({vehicleDistance})");
-                    return;
-                }
-
-                instance.CancelTryIgnitionServerRpc(driverId, instance.keyIsInIgnition);
+                instance.CancelTryIgnitionServerRpc(SenderPlayerId, instance.keyIsInIgnition);
             }
 
             public void PassengerLeaveVehicleServerRpc(int playerId, Vector3 exitPoint, VehicleController instance, ServerRpcParams serverRpcParams)
@@ -1712,15 +1698,6 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried take control of vehicle from too far away. ({vehicleDistance})");
-                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                    HostFixesServerSendRpcs.Instance.CancelPlayerInControlOfVehicleClientRpc(SenderPlayerId, instance, clientRpcParams);
-                    return;
-                }
-
                 instance.SetPlayerInControlOfVehicleServerRpc(SenderPlayerId);
             }
 
@@ -1740,19 +1717,7 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogDebug($"Player #{SenderPlayerId} ({player.playerUsername}) tried remove control of vehicle from too far away. ({vehicleDistance})");
-                }
-
-                float syncDistance = Vector3.Distance(instance.transform.position, carLocation);
-                if (syncDistance > 10f)
-                {
-                    Log.LogDebug($"Player #{SenderPlayerId} ({player.playerUsername}) sent a location that is too far away. ({syncDistance})");
-                }
-
-                instance.RemovePlayerControlOfVehicleServerRpc(playerId, carLocation, carRotation, setKeyInIgnition);
+                instance.RemovePlayerControlOfVehicleServerRpc(SenderPlayerId, carLocation, carRotation, setKeyInIgnition);
             }
 
             public void ShiftToGearServerRpc(int setGear, int playerId, VehicleController instance, ServerRpcParams serverRpcParams)
@@ -1790,13 +1755,6 @@ namespace HostFixes
                     return;
                 }
 
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to honk vehicle horn from too far away. ({vehicleDistance})");
-                    return;
-                }
-
                 instance.SetHonkServerRpc(honk, SenderPlayerId);
             }
 
@@ -1810,12 +1768,6 @@ namespace HostFixes
                 }
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to set vehicle radio station from too far away. ({vehicleDistance})");
-                    return;
-                }
 
                 if (radioStation < 0 || radioStation >= instance.radioClips.Length)
                 {
@@ -1824,26 +1776,6 @@ namespace HostFixes
                 }
 
                 instance.SetRadioStationServerRpc(radioStation, signalQuality);
-            }
-
-            public void SetRadioOnServerRpc(bool on, VehicleController instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[SetRadioOnServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to turn vehicle radio on from too far away. ({vehicleDistance})");
-                    return;
-                }
-
-                instance.SetRadioOnServerRpc(on);
             }
 
             public void CarBumpServerRpc(Vector3 vel, VehicleController instance, ServerRpcParams serverRpcParams)
@@ -1886,91 +1818,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.OwnerClientId != senderClientId)
-                {
-                    return;
-                }
-
                 instance.DestroyCarServerRpc(SenderPlayerId);
-            }
-
-            public void PushTruckServerRpc(Vector3 pos, Vector3 dir, VehicleController instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[PushTruckServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to push vehicle from too far away. ({vehicleDistance})");
-                    return;
-                }
-
-                instance.PushTruckServerRpc(pos, dir);
-            }
-
-            public void PushTruckFromOwnerServerRpc(Vector3 pos, VehicleController instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[PushTruckFromOwnerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to push vehicle from the owner from too far away. ({vehicleDistance})");
-                    return;
-                }
-
-                instance.PushTruckFromOwnerServerRpc(pos);
-            }
-
-            public void SetHoodOpenServerRpc(bool open, VehicleController instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[SetHoodOpenServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (instance.OwnerClientId != senderClientId && vehicleDistance > 10f)
-                {
-                    return;
-                }
-
-                instance.SetHoodOpenServerRpc(open);
-            }
-
-            public void ToggleHeadlightsServerRpc(bool setLightsOn, VehicleController instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
-                {
-                    Log.LogError($"[ToggleHeadlightsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[SenderPlayerId];
-                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
-                if (vehicleDistance > 10f)
-                {
-                    Log.LogWarning($"Player #{SenderPlayerId} ({player.playerUsername}) tried to toggle vehicle headlights from too far away. ({vehicleDistance})");
-                    return;
-                }
-
-                instance.ToggleHeadlightsServerRpc(setLightsOn);
             }
 
             public void SpringDriverSeatServerRpc(VehicleController instance, ServerRpcParams serverRpcParams)
@@ -3885,41 +3733,6 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class SetRadioOnServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_2416589835")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetRadioOnServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetRadioOnServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SetRadioOnServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
             class CarBumpServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(VehicleController), "__rpc_handler_2627964612")]
@@ -4018,146 +3831,6 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch DestroyCarServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class PushTruckServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_4058179333")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PushTruckServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PushTruckServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch PushTruckServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class PushTruckFromOwnerServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_1326342869")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PushTruckFromOwnerServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PushTruckFromOwnerServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch PushTruckFromOwnerServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class SetHoodOpenServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_3804995530")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetHoodOpenServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetHoodOpenServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SetHoodOpenServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class ToggleHeadlightsServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(VehicleController), "__rpc_handler_369816798")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ToggleHeadlightsServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ToggleHeadlightsServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch ToggleHeadlightsServerRpc");
                     }
 
                     return codes.AsEnumerable();
