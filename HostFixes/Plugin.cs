@@ -414,7 +414,7 @@ namespace HostFixes
                         }
                     }
                 }
-                catch (IndexOutOfRangeException)
+                catch (KeyNotFoundException)
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({username}) sent levelID ({levelID}) that is not in the moons array.");
                     return;
@@ -1556,7 +1556,7 @@ namespace HostFixes
                         return;
                     }
                 }
-                catch (IndexOutOfRangeException)
+                catch (KeyNotFoundException)
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to buy a vehicle that is not in the buyable vehicles list. (vehicleID: {vehicleID})");
                     return;
