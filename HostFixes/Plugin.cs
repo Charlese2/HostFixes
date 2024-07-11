@@ -1541,10 +1541,10 @@ namespace HostFixes
 
 
                 vehicleCosts ??= instance.terminalNodes.allKeywords
-                        .First(keyword => keyword.name.Equals("Buy")).compatibleNouns
-                        .Where(noun => noun.result.buyVehicleIndex != -1)
-                        .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
-                        .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
+                    .First(keyword => keyword.name == "Buy").compatibleNouns
+                    .Where(noun => noun.result.buyVehicleIndex != -1)
+                    .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
+                    .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
 
                 try
                 {
