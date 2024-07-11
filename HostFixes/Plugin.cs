@@ -265,7 +265,6 @@ namespace HostFixes
 
                 string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
                 int cost = 0;
-                int count = 0;
 
                 if (instance.numberOfItemsInDropship + boughtItems.Length > 12)
                 {
@@ -273,36 +272,27 @@ namespace HostFixes
                     return;
                 }
 
-                // Add up each item's cost
-                foreach (int item in boughtItems)
+                Dictionary<int, int> boughtItemsCount = boughtItems.GroupBy(item => item).ToDictionary(item => item.Key, item => item.Count());
+                foreach (int item in boughtItemsCount.Keys)
                 {
                     try
                     {
-                        _ = instance.buyableItemsList[item];
+                        cost += (int)(instance.buyableItemsList[item].creditsWorth * (instance.itemSalesPercentages[item] / 100f) * boughtItemsCount[item]);
                     }
                     catch
                     {
                         Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
                         return;
                     }
-                    cost += (int)(instance.buyableItemsList[item].creditsWorth * (instance.itemSalesPercentages[item] / 100f));
-                    count++;
                 }
 
-                if (instance.groupCredits - cost == newGroupCredits)
+                if (instance.groupCredits - cost != newGroupCredits)
                 {
-                    instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
                     return;
                 }
 
-                if (instance.groupCredits - cost < newGroupCredits + count && instance.groupCredits - cost > newGroupCredits - count)
-                {
-                    Log.LogWarning($"Credit value is slightly off. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} New Credit Value: {newGroupCredits}");
-                    instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
-                    return;
-                }
-
-                Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+                instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
             }
 
             public void PlayTerminalAudioServerRpc(int clipIndex, Terminal instance, ServerRpcParams _)
