@@ -305,25 +305,6 @@ namespace HostFixes
                 Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
             }
 
-            public void SyncGroupCreditsServerRpc(int newGroupCredits, int numItemsInShip, Terminal instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
-                {
-                    Log.LogError($"[SyncGroupCreditsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                if (senderClientId == 0 || newGroupCredits < instance.groupCredits)
-                {
-                    instance.SyncGroupCreditsServerRpc(newGroupCredits, numItemsInShip);
-                }
-                else
-                {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) attempted to increase credits while buying items from Terminal. Attempted credit value: {newGroupCredits} Old credit value: {instance.groupCredits}");
-                }
-            }
-
             public void PlayTerminalAudioServerRpc(int clipIndex, Terminal instance, ServerRpcParams _)
             {
                 if (terminalSoundPlaying) return;
@@ -1949,41 +1930,6 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch BuyItemsServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class SyncGroupCreditsServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(Terminal), "__rpc_handler_3085407145")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncGroupCreditsServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncGroupCreditsServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SyncGroupCreditsServerRpc");
                     }
 
                     return codes.AsEnumerable();
