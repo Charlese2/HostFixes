@@ -391,13 +391,11 @@ namespace HostFixes
 
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                if (moons == null)
-                {
-                    Dictionary<string, int> moonCost = terminal.terminalNodes.allKeywords[27/*route*/].compatibleNouns
-                        .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
-                        .ToDictionary(compatibleNoun => compatibleNoun.noun.name, compatibleNoun => compatibleNoun.result.itemCost);
-                    moons = StartOfRound.Instance.levels.ToDictionary(moon => moon.levelID, moon => moonCost.GetValueOrDefault(moon.PlanetName.Replace(" ", "-"), 0));
-                }
+                moons ??= terminal.terminalNodes.allKeywords
+                    .First(keyword => keyword.name == "Route").compatibleNouns
+                    .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
+                    .Select(moon => moon.result.terminalOptions.First(option => option.noun.name == "Confirm"))
+                    .ToDictionary(option => option.result.buyRerouteToMoon, option => option.result.itemCost);
 
                 try
                 {
