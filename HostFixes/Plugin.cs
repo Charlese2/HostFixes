@@ -23,6 +23,7 @@ namespace HostFixes
         internal static ManualLogSource Log = null!;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
         internal static Dictionary<int, int>? moons;
+        internal static Dictionary<int, int>? vehicleCosts;
         internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -1557,9 +1558,22 @@ namespace HostFixes
                     return;
                 }
 
+                if (!configExperimentalChanges.Value)
+                {
+                    instance.BuyVehicleServerRpc(vehicleID, newGroupCredits, useWarranty);
+                    return;
+                }
+
+
+                vehicleCosts ??= instance.terminalNodes.allKeywords
+                        .First(keyword => keyword.name.Equals("Buy")).compatibleNouns
+                        .Where(noun => noun.result.buyVehicleIndex != -1)
+                        .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
+                        .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
+
                 try
                 {
-                    int cost = instance.buyableVehicles[vehicleID].creditsWorth;
+                    int cost = (int)(vehicleCosts[vehicleID] * (instance.itemSalesPercentages[vehicleID + instance.buyableItemsList.Length] / 100f));
                     int spent = instance.groupCredits - newGroupCredits;
                     if (cost != spent && !instance.hasWarrantyTicket)
                     {
