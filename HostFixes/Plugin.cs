@@ -675,6 +675,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (senderClientId == 0)
+                {
+                    instance.EndGameServerRpc(playerClientId);
+                    return;
+                }
+
                 if (endGameOnCoolown.TryGetValue(senderPlayerId, out bool endGameCalledOnCooldown) && endGameCalledOnCooldown == true)
                 {
                     Instance.StartCoroutine(EndGameCooldown(senderPlayerId));
