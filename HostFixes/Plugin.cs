@@ -2263,7 +2263,6 @@ namespace HostFixes
 
                 if (senderClientId != 0)
                 {
-                    InfoPanel.Instance.Log($"Player #{SenderPlayerId} ({player.playerUsername}) tried calling CarBumpServerRpc without being the owner.");
                     return;
                 }
 
