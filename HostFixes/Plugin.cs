@@ -38,6 +38,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configDisablePvpInShip = null!;
         public static ConfigEntry<bool> configLogSignalTranslatorMessages = null!;
         public static ConfigEntry<bool> configLogPvp = null!;
+        public static ConfigEntry<bool> configCheckPrices = null!;
         public static ConfigEntry<bool> configExperimentalChanges = null!;
         public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
         public static ConfigEntry<bool> configShipObjectRotationCheck = null!;
@@ -85,6 +86,7 @@ namespace HostFixes
             configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
             configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
+            configCheckPrices = Config.Bind("General", "Check prices", false, "Check if the price on the terminal matches what is sent by the client.");
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
             configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
             configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
@@ -268,7 +270,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (!configExperimentalChanges.Value)
+                if (!configCheckPrices.Value)
                 {
                     instance.BuyItemsServerRpc(boughtItems, newGroupCredits, numItemsInShip);
                     return;
@@ -394,7 +396,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (!configExperimentalChanges.Value)
+                if (!configCheckPrices.Value)
                 {
                     instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
                     return;
@@ -1544,12 +1546,11 @@ namespace HostFixes
                     return;
                 }
 
-                if (!configExperimentalChanges.Value)
+                if (!configCheckPrices.Value)
                 {
                     instance.BuyVehicleServerRpc(vehicleID, newGroupCredits, useWarranty);
                     return;
                 }
-
 
                 vehicleCosts ??= instance.terminalNodes.allKeywords
                     .First(keyword => keyword.name == "Buy").compatibleNouns
