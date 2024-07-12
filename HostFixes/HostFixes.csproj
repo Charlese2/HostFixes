@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <AssemblyName>$(MSBuildProjectName)</AssemblyName>
         <Description>Fixes for hosting a Lethal Company Lobby.</Description>
-        <Version>1.0.16</Version>
+        <Version>1.0.17</Version>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
         <Authors>CharlesE2</Authors>

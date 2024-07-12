@@ -301,7 +301,7 @@ namespace HostFixes
 
                 if (instance.groupCredits - cost != newGroupCredits)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Old Credit Value: {instance.groupCredits} Cost Of items: {cost} Attempted Credit Value: {newGroupCredits}");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Credits spent: {instance.groupCredits-newGroupCredits} Cost of items: {cost} Attempted credit value: {newGroupCredits}");
                     return;
                 }
 
@@ -1454,7 +1454,7 @@ namespace HostFixes
                 instance.UpdateAnimTriggerServerRpc();
             }
 
-            public void SyncAllPlayerLevelsServerRpc(int newPlayerLevel, int playerClientId,HUDManager instance, ServerRpcParams serverRpcParams)
+            public void SyncAllPlayerLevelsServerRpc(int newPlayerLevel, int playerClientId, HUDManager instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
