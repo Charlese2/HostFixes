@@ -1257,6 +1257,154 @@ namespace HostFixes
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
             }
 
+            public void ThrowObjectServerRpc(NetworkObjectReference grabbedObject, bool droppedInElevator, bool droppedInShipRoom, Vector3 targetFloorPosition, int floorYRot, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[ThrowObjectServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                if (!configExperimentalChanges.Value)
+                {
+                    instance.ThrowObjectServerRpc(grabbedObject, droppedInElevator, droppedInShipRoom, targetFloorPosition, floorYRot);
+                    return;
+                }
+
+                string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+
+                GameObject thrownObject = grabbedObject;
+
+                if (thrownObject is null)
+                {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
+                    return;
+                }
+
+                if (thrownObject.TryGetComponent<StunGrenadeItem>(out _))
+                {
+                    instance.ThrowObjectServerRpc(grabbedObject, droppedInElevator, droppedInShipRoom, targetFloorPosition, floorYRot);
+                    return;
+                }
+
+                if (!thrownObject.TryGetComponent(out GrabbableObject _))
+                {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
+                    return;
+                }
+
+                Vector3 placeLocalPosition;
+                Vector3 targetFloorWorldPosition;
+
+                if (droppedInElevator)
+                {
+                    targetFloorWorldPosition = instance.playersManager.elevatorTransform.TransformPoint(targetFloorPosition);
+                    placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(thrownObject.transform.position);
+                }
+                else
+                {
+                    targetFloorWorldPosition = instance.playersManager.propsContainer.TransformPoint(targetFloorPosition);
+                    placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(thrownObject.transform.position);
+                }
+
+                float throwDistance = Vector3.Distance(new Vector3(instance.transform.position.x, instance.transform.position.z, 0f), new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f));
+
+                if (throwDistance > instance.grabDistance + 7)
+                {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
+                    instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, floorYRot);
+                    return;
+                }
+
+                instance.ThrowObjectServerRpc(grabbedObject, droppedInElevator, droppedInShipRoom, targetFloorPosition, floorYRot);
+            }
+
+            public void PlaceObjectServerRpc(NetworkObjectReference grabbedObject, NetworkObjectReference parentObject, Vector3 placePositionOffset, bool matchRotationOfParent, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[ThrowObjectServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                if (!configExperimentalChanges.Value)
+                {
+                    instance.PlaceObjectServerRpc(grabbedObject, parentObject, placePositionOffset, matchRotationOfParent);
+                    return;
+                }
+
+                string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+
+                GameObject itemParent = parentObject;
+                GameObject grabbedItem = grabbedObject;
+
+                try
+                {
+                    float placeDistance = Vector3.Distance(instance.transform.position, itemParent.transform.position);
+
+                    if (placeDistance > instance.grabDistance + 7)
+                    {
+                        Vector3 placeLocalPosition;
+
+                        if (instance.isInElevator)
+                        {
+                            placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(grabbedItem.transform.position);
+                        }
+                        else
+                        {
+                            placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
+                        }
+
+                        InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to place an object to far away. ({placeDistance})");
+                        instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, (int)instance.transform.localEulerAngles.x);
+                        return;
+                    }
+                }
+                catch (Exception e)
+                {
+                    InfoPanel.Instance.Log(e);
+                }
+
+
+                instance.PlaceObjectServerRpc(grabbedObject, parentObject, placePositionOffset, matchRotationOfParent);
+            }
+
+            public void AddObjectToDeskServerRpc(NetworkObjectReference grabbableObjectNetObject, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[ThrowObjectServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                if (!configExperimentalChanges.Value)
+                {
+                    instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                string username = player.playerUsername;
+                GameObject grabbableObject = grabbableObjectNetObject;
+
+                if (grabbableObject is null)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) sent a grabbable object that doesn't exist. ({grabbableObjectNetObject.NetworkObjectId})");
+                    return;
+                }
+
+                float deskDistance = Vector3.Distance(player.transform.position, instance.deskObjectsContainer.transform.position);
+                if (deskDistance > player.grabDistance + 7)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) {grabbableObject.GetComponent<GrabbableObject>()?.name}");
+                    return;
+                }
+                instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
+            }
+
             public void SetShipLightsServerRpc(bool setLightsOn, ShipLights instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
