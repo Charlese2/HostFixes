@@ -1559,40 +1559,6 @@ namespace HostFixes
                 instance.SyncAlreadyHeldObjectsServerRpc(joiningClientId);
             }
 
-            public void SyncShipUnlockablesServerRpc(StartOfRound instance, ServerRpcParams serverRpcParams)
-            {
-                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
-                {
-                    Log.LogError($"[SyncShipUnlockablesServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
-                    return;
-                }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
-
-                try
-                {
-                    PlaceableShipObject[] placeableShipObjects = [.. FindObjectsOfType<PlaceableShipObject>().OrderBy(x => x.unlockableID)];
-
-                    for (int i = 0; i < placeableShipObjects.Length; i++)
-                    {
-                        if (placeableShipObjects[i].parentObject == null)
-                        {
-                            Log.LogError($"PlaceableShipObject #{placeableShipObjects[i].unlockableID} ({placeableShipObjects[i].name}) parent is null. Crash Prevented.");
-                            return;
-                        }
-                    }
-
-                }
-                catch (Exception e)
-                {
-                    Log.LogError(e);
-                    return;
-                }
-
-                instance.SyncShipUnlockablesServerRpc();
-            }
-
             public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -2007,42 +1973,6 @@ namespace HostFixes
                     bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
                 }
-            }
-        }
-
-        [HarmonyPatch]
-        class Fix_SyncShipUnlockablesServerRpc_Crash
-        {
-            [HarmonyPatch(typeof(StartOfRound), "SyncAlreadyHeldObjectsServerRpc")]
-            [HarmonyTranspiler]
-            public static IEnumerable<CodeInstruction> RedirectLocalCallToPluginRpc(IEnumerable<CodeInstruction> instructions)
-            {
-                bool found = false;
-                List<CodeInstruction> codes = new(instructions);
-                for (int i = 0; i < codes.Count; i++)
-                {
-                    if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc", ReflectedType.Name: "StartOfRound" })
-                    {
-                        int callLocation = i;
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldloc, 12));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncShipUnlockablesServerRpc));
-
-                        found = true;
-                    }
-
-                    if (codes.Count > 1000)
-                    {
-                        throw new Exception("Stuck in infinite loop while patching.");
-                    }
-                }
-
-                if (!found)
-                {
-                    Log.LogError("Could not patch SyncAlreadyHeldObjectsServerRpc's manual call to SyncShipUnlockablesServerRpc");
-                }
-
-                return codes.AsEnumerable();
             }
         }
 
@@ -3337,41 +3267,6 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SyncAlreadyHeldObjectsServerRpc");
-                    }
-
-                    return codes.AsEnumerable();
-                }
-            }
-
-            [HarmonyPatch]
-            class SyncShipUnlockablesServerRpc_Transpile
-            {
-                [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_744998938")]
-                [HarmonyTranspiler]
-                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
-                {
-                    var found = false;
-                    var callLocation = -1;
-                    var codes = new List<CodeInstruction>(instructions);
-                    for (int i = 0; i < codes.Count; i++)
-                    {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SyncShipUnlockablesServerRpc" })
-                        {
-                            callLocation = i;
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
-                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SyncShipUnlockablesServerRpc));
-                    }
-                    else
-                    {
-                        Log.LogError("Could not patch SyncShipUnlockablesServerRpc");
                     }
 
                     return codes.AsEnumerable();
