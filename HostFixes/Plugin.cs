@@ -1308,7 +1308,10 @@ namespace HostFixes
                     placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(thrownObject.transform.position);
                 }
 
-                float throwDistance = Vector3.Distance(new Vector3(instance.transform.position.x, instance.transform.position.z, 0f), new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f));
+                float throwDistance = Vector3.Distance(
+                    new Vector3(instance.transform.position.x, instance.transform.position.z, 0f),
+                    new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f)
+                );
 
                 if (throwDistance > instance.grabDistance + 7)
                 {
@@ -1320,7 +1323,13 @@ namespace HostFixes
                 instance.ThrowObjectServerRpc(grabbedObject, droppedInElevator, droppedInShipRoom, targetFloorPosition, floorYRot);
             }
 
-            public void PlaceObjectServerRpc(NetworkObjectReference grabbedObject, NetworkObjectReference parentObject, Vector3 placePositionOffset, bool matchRotationOfParent, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            public void PlaceObjectServerRpc(
+                NetworkObjectReference grabbedObject, 
+                NetworkObjectReference parentObject, 
+                Vector3 placePositionOffset, 
+                bool matchRotationOfParent, 
+                PlayerControllerB instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -1358,7 +1367,13 @@ namespace HostFixes
                         }
 
                         InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to place an object to far away. ({placeDistance})");
-                        instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, (int)instance.transform.localEulerAngles.x);
+                        instance.ThrowObjectServerRpc(
+                            grabbedObject, 
+                            instance.isInElevator, 
+                            instance.isInHangarShipRoom, 
+                            placeLocalPosition, 
+                            (int)instance.transform.localEulerAngles.x
+                        );
                         return;
                     }
                 }
@@ -1399,7 +1414,8 @@ namespace HostFixes
                 float deskDistance = Vector3.Distance(player.transform.position, instance.deskObjectsContainer.transform.position);
                 if (deskDistance > player.grabDistance + 7)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) {grabbableObject.GetComponent<GrabbableObject>()?.name}");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) " +
+                        $"{grabbableObject.GetComponent<GrabbableObject>()?.name}");
                     return;
                 }
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
@@ -1921,7 +1937,7 @@ namespace HostFixes
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
-            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
+            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams _)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
