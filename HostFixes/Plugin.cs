@@ -64,8 +64,14 @@ namespace HostFixes
         public static Dictionary<ulong, ulong> SteamIdtoClientIdMap { get; private set; } = [];
         public static Dictionary<ulong, ulong> ClientIdToSteamIdMap { get; private set; } = [];
 
-        private static readonly MethodInfo BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod("__beginSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
-        private static readonly MethodInfo EndSendClientRpc = typeof(NetworkBehaviour).GetMethod("__endSendClientRpc", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly MethodInfo BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod(
+                "__beginSendClientRpc", 
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+        private static readonly MethodInfo EndSendClientRpc = typeof(NetworkBehaviour).GetMethod(
+                "__endSendClientRpc", 
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
         private void Awake()
         {
@@ -82,17 +88,28 @@ namespace HostFixes
 
             // Plugin startup logic
             Log = Logger;
-            configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1, "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
-            configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false, "If a player is inside the ship, they can't be damaged by other players.");
-            configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, "Log messages that players send on the signal translator.");
-            configLogPvp = Config.Bind("Logging", "Log PvP damage", false, "Log when a player damages another player.");
-            configCheckPrices = Config.Bind("General", "Check prices", false, "Check if the price on the terminal matches what is sent by the client.");
-            configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
-            configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
-            configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, "Only allow ship objects to be placed if the they are still upright.");
-            configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
-            configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5, "Limit distance that someone can pull the ship lever from. 0 to disable.");
-            configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5, "Limit distance that someone can press the teleporter buttton from. 0 to disable.");
+            configMinimumVotesToLeaveEarly = Config.Bind("General", "Minimum Votes To Leave Early", 1,
+                "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
+            configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false,
+                "If a player is inside the ship, they can't be damaged by other players.");
+            configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, 
+                "Log messages that players send on the signal translator.");
+            configLogPvp = Config.Bind("Logging", "Log PvP damage", false, 
+                "Log when a player damages another player.");
+            configCheckPrices = Config.Bind("General", "Check prices", false, 
+                "Check if the price on the terminal matches what is sent by the client.");
+            configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, 
+                "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
+            configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, 
+                "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
+            configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, 
+                "Only allow ship objects to be placed if the they are still upright.");
+            configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, 
+                "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
+            configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5, 
+                "Limit distance that someone can pull the ship lever from. 0 to disable.");
+            configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5, 
+                "Limit distance that someone can press the teleporter buttton from. 0 to disable.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
@@ -301,7 +318,8 @@ namespace HostFixes
 
                 if (instance.groupCredits - cost != newGroupCredits)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) new credit value does not match the calculated amount of new credits. Credits spent: {instance.groupCredits-newGroupCredits} Cost of items: {cost} Attempted credit value: {newGroupCredits}");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) credits spent on items does not match item price. " +
+                        $"Spent credits: {instance.groupCredits - cost} Cost Of items: {cost}");
                     return;
                 }
 
@@ -336,15 +354,17 @@ namespace HostFixes
 
                 Instance.StartCoroutine(BuyShipUnlockableCooldown());
 
+                string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+
                 if (unlockableID < 0 || unlockableID > StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) tried to buy unlockable that is out of unlockables list. ({unlockableID}).");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is out of unlockables list. ({unlockableID}).");
                     return;
                 }
 
                 if (StartOfRound.Instance.unlockablesList.unlockables[unlockableID].alreadyUnlocked)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) tried to unlock an unlockable multiple times");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to unlock an unlockable multiple times");
                     return;
                 }
 
@@ -356,7 +376,8 @@ namespace HostFixes
 
                 if (senderClientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) calculated credit amount does not match sent credit amount for unlockable. Current credits: {terminal.groupCredits} Unlockable cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for unlockable. " +
+                        $"Current credits: {terminal.groupCredits} Unlockable cost: {unlockableCost} Sent credit Amount: {newGroupCreditsAmount}");
                     return;
                 }
 
@@ -366,7 +387,8 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{senderClientId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) attempted to increase credits while buying ship unlockables. Attempted credit value: {newGroupCreditsAmount} Old credit value: {terminal.groupCredits}");
+                    Log.LogWarning($"Player #{senderClientId} ({username}) attempted to increase credits while buying ship unlockables." +
+                        $" Attempted credit value: {newGroupCreditsAmount} Old credit value: {terminal.groupCredits}");
                 }
             }
 
@@ -415,14 +437,16 @@ namespace HostFixes
                     int moonCost = moons[levelID];
                     if (senderClientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
                     {
-                        Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
+                        Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. " +
+                            $"Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
                         return;
                     }
                     else
                     {
                         if (newGroupCreditsAmount > terminal.groupCredits)
                         {
-                            Log.LogWarning($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                            Log.LogWarning($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. " +
+                                $"Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
                             return;
                         }
                     }
@@ -448,7 +472,8 @@ namespace HostFixes
 
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
-                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from senderClientId: ({senderClientId}) Message: ({chatMessage})");
+                    Log.LogError($"[AddPlayerChatMessageServerRpc] Failed to get the playerId from senderClientId: ({senderClientId}) " +
+                        $"Message: ({chatMessage})");
                     return;
                 }
 
@@ -456,13 +481,15 @@ namespace HostFixes
 
                 if (StartOfRound.Instance.allPlayerScripts[senderPlayerId].isPlayerDead)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried sending a chat message while they are dead on the server. Message: ({chatMessage})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried sending a chat message while they are dead on the server. " +
+                        $"Message: ({chatMessage})");
                     return;
                 }
 
                 if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Length)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player. Message: ({chatMessage})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player. " +
+                        $"Message: ({chatMessage})");
                     return;
                 }
 
@@ -562,11 +589,18 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) tried to force the vote to leave.");
+                    string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to force the vote to leave.");
                 }
             }
 
-            public void PlaceShipObjectServerRpc(Vector3 newPosition, Vector3 newRotation, NetworkObjectReference objectRef, int playerWhoMoved, ShipBuildModeManager instance, ServerRpcParams serverRpcParams)
+            public void PlaceShipObjectServerRpc(
+                Vector3 newPosition, 
+                Vector3 newRotation, 
+                NetworkObjectReference objectRef, 
+                int playerWhoMoved, 
+                ShipBuildModeManager instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -598,10 +632,15 @@ namespace HostFixes
                     try
                     {
                         GameObject networkObject = (GameObject)objectRef;
-                        PlaceableShipObject placeableShipObject = networkObject.GetComponentInChildren<PlaceableShipObject>() ?? throw new Exception("PlaceableShipObject Not Found");
-                        if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
+                        PlaceableShipObject placeableShipObject = networkObject.GetComponentInChildren<PlaceableShipObject>() ?? 
+                            throw new Exception("PlaceableShipObject Not Found");
+                        if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || 
+                            Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                         {
-                            Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
+                            Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
+                                $"tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. " +
+                                $"x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) " +
+                                $"z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
                             return;
                         }
                     }
@@ -644,7 +683,9 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) attemped to despawn an enemy on the server: {networkObject?.name} {gameObject?.name} {enemyNetworkObject.NetworkObjectId}");
+                    string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) attemped to despawn an enemy on the server: " +
+                        $"{networkObject?.name} {gameObject?.name} {enemyNetworkObject.NetworkObjectId}");
                 }
             }
 
@@ -767,7 +808,9 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 if (instance.actualClientId != senderClientId)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to call SendNewPlayerValuesServerRpc with input value ({newPlayerSteamId}) on player #{instance.playerClientId} ({instance.playerUsername}).");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
+                        $"tried to call SendNewPlayerValuesServerRpc with input value ({newPlayerSteamId}) " +
+                        $"on player #{instance.playerClientId} ({instance.playerUsername}).");
                     return;
                 }
 
@@ -791,7 +834,12 @@ namespace HostFixes
                 instance.SendNewPlayerValuesServerRpc(senderSteamId);
             }
 
-            public void DamagePlayerFromOtherClientServerRpc(int damageAmount, Vector3 hitDirection, int playerWhoHit, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            public void DamagePlayerFromOtherClientServerRpc(
+                int damageAmount, 
+                Vector3 hitDirection, 
+                int playerWhoHit, 
+                PlayerControllerB instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -814,7 +862,8 @@ namespace HostFixes
 
                 if (playerWhoHit != senderPlayerId)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to spoof ({damageAmount}) damage from player #{playerWhoHit} on ({instance.playerUsername}).");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to spoof ({damageAmount}) damage from player #{playerWhoHit} " +
+                        $"on ({instance.playerUsername}).");
                     return;
                 }
 
@@ -938,7 +987,8 @@ namespace HostFixes
                     bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
                     if (distanceToObject > instance.grabDistance + 7 && isNotBody)
                     {
-                        Log.LogWarning($"Player #{senderPlayerId} ({username}) Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
+                        Log.LogWarning($"Player #{senderPlayerId} ({username}) " +
+                            $"Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
                         instance.GrabObjectClientRpc(false, grabbedObject);
                         return;
                     }
@@ -951,7 +1001,14 @@ namespace HostFixes
                 }
             }
 
-            public void ThrowObjectServerRpc(NetworkObjectReference grabbedObject, bool droppedInElevator, bool droppedInShipRoom, Vector3 targetFloorPosition, int floorYRot, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            public void ThrowObjectServerRpc(
+                NetworkObjectReference grabbedObject, 
+                bool droppedInElevator, 
+                bool droppedInShipRoom, 
+                Vector3 targetFloorPosition, 
+                int floorYRot, 
+                PlayerControllerB instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -1002,7 +1059,10 @@ namespace HostFixes
                     placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(thrownObject.transform.position);
                 }
 
-                float throwDistance = Vector3.Distance(new Vector3(instance.transform.position.x, instance.transform.position.z, 0f), new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f));
+                float throwDistance = Vector3.Distance(
+                    new Vector3(instance.transform.position.x, instance.transform.position.z, 0f),
+                    new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f)
+                );
 
                 if (throwDistance > instance.grabDistance + 7)
                 {
@@ -1014,7 +1074,13 @@ namespace HostFixes
                 instance.ThrowObjectServerRpc(grabbedObject, droppedInElevator, droppedInShipRoom, targetFloorPosition, floorYRot);
             }
 
-            public void PlaceObjectServerRpc(NetworkObjectReference grabbedObject, NetworkObjectReference parentObject, Vector3 placePositionOffset, bool matchRotationOfParent, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            public void PlaceObjectServerRpc(
+                NetworkObjectReference grabbedObject, 
+                NetworkObjectReference parentObject, 
+                Vector3 placePositionOffset, 
+                bool matchRotationOfParent, 
+                PlayerControllerB instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -1051,7 +1117,13 @@ namespace HostFixes
                             placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
                         }
 
-                        instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, (int)instance.transform.localEulerAngles.x);
+                        instance.ThrowObjectServerRpc(
+                            grabbedObject, 
+                            instance.isInElevator, 
+                            instance.isInHangarShipRoom, 
+                            placeLocalPosition, 
+                            (int)instance.transform.localEulerAngles.x
+                        );
                         return;
                     }
                 }
@@ -1092,7 +1164,8 @@ namespace HostFixes
                 float deskDistance = Vector3.Distance(player.transform.position, instance.deskObjectsContainer.transform.position);
                 if (deskDistance > player.grabDistance + 7)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) {grabbableObject.GetComponent<GrabbableObject>()?.name}");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) " +
+                        $"{grabbableObject.GetComponent<GrabbableObject>()?.name}");
                     return;
                 }
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
@@ -1141,13 +1214,14 @@ namespace HostFixes
 
                 if (StartOfRound.Instance.allPlayerScripts[senderPlayerId].isPlayerDead)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to send a Signal Translator message while they are dead on the server. Message: ({signalMessage})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to send a Signal Translator message while they are dead on the server." +
+                        $" Message: ({signalMessage})");
                     return;
                 }
 
                 if (configLogSignalTranslatorMessages.Value)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername}) sent signal translator message: ({signalMessage})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) sent signal translator message: ({signalMessage})");
                 }
                 instance.UseSignalTranslatorServerRpc(signalMessage);
             }
@@ -1218,7 +1292,8 @@ namespace HostFixes
                 float teleporterButtonDistance = Vector3.Distance(player.transform.position, instance.buttonTrigger.transform.position);
                 if (configLimitTeleporterButtonDistance.Value > 1f && teleporterButtonDistance > configLimitTeleporterButtonDistance.Value)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to press teleporter button from too far away ({teleporterButtonDistance})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to press teleporter button from too far away " +
+                        $"({teleporterButtonDistance})");
                     return;
                 }
 
@@ -1246,7 +1321,14 @@ namespace HostFixes
                 instance.TeleportPlayerOutServerRpc(playerObj, teleportPos);
             }
 
-            public void UpdatePlayerPositionServerRpc(Vector3 newPos, bool inElevator, bool inShipRoom, bool exhausted, bool isPlayerGrounded, PlayerControllerB instance, ServerRpcParams _)
+            public void UpdatePlayerPositionServerRpc(
+                Vector3 newPos, 
+                bool inElevator, 
+                bool inShipRoom, 
+                bool exhausted, 
+                bool isPlayerGrounded, 
+                PlayerControllerB instance, 
+                ServerRpcParams _)
             {
                 if (instance.isPlayerDead)
                 {
@@ -1267,8 +1349,12 @@ namespace HostFixes
                     float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
 
                     float downwardDotProduct = Vector3.Dot((newPos - position).normalized, Vector3.down);
-                    float maxDistancePerTick = instance.movementSpeed * (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
-                    if (downwardDotProduct > 0.3f || StartOfRound.Instance.suckingPlayersOutOfShip || StartOfRound.Instance.inShipPhase || !configExperimentalPositionCheck.Value)
+                    float maxDistancePerTick = instance.movementSpeed * 
+                        (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
+                    if (downwardDotProduct > 0.3f || 
+                        StartOfRound.Instance.suckingPlayersOutOfShip || 
+                        StartOfRound.Instance.inShipPhase || 
+                        !configExperimentalPositionCheck.Value)
                     {
                         instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                         allowedMovement[instance.playerClientId] = true;
@@ -1313,7 +1399,12 @@ namespace HostFixes
                 }
             }
 
-            public void UpdatePlayerRotationFullServerRpc(Vector3 playerEulers, Vector3 cameraRotation, bool syncingCameraRotation, PlayerControllerB instance, ServerRpcParams _)
+            public void UpdatePlayerRotationFullServerRpc(
+                Vector3 playerEulers, 
+                Vector3 cameraRotation, 
+                bool syncingCameraRotation, 
+                PlayerControllerB instance, 
+                ServerRpcParams _)
             {
                 try
                 {
@@ -1395,7 +1486,12 @@ namespace HostFixes
                 instance.StopUsingServerRpc(playerUsing);
             }
 
-            public void UpdateAnimServerRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ServerRpcParams serverRpcParams)
+            public void UpdateAnimServerRpc(
+                bool setBool, 
+                bool playSecondaryAudios, 
+                int playerWhoTriggered, 
+                AnimatedObjectTrigger instance, 
+                ServerRpcParams serverRpcParams)
             {
                 Transform interactableTransfrom = instance.transform;
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1415,13 +1511,15 @@ namespace HostFixes
 
                 if (playerWhoTriggered != senderPlayerId)
                 {
-                    Log.LogWarning($"[UpdateAnimServerRpc] playerWhoTriggered ({playerWhoTriggered}) != senderPlayerId ({senderPlayerId}) ({instance.triggerAnimator.name})");
+                    Log.LogWarning($"[UpdateAnimServerRpc] " +
+                        $"playerWhoTriggered ({playerWhoTriggered}) != senderPlayerId ({senderPlayerId}) ({instance.triggerAnimator.name})");
                     return;
                 }
 
                 if (player.isPlayerDead)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with an animated object ({instance.triggerAnimator.name}) while they are dead on the server.");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
+                        $"tried to interact with an animated object ({instance.triggerAnimator.name}) while they are dead on the server.");
                     return;
                 }
 
@@ -1433,7 +1531,8 @@ namespace HostFixes
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[senderPlayerId].transform.position);
                 if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > player.grabDistance + 7)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away ({distanceToObject})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away" +
+                        $" ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
                     return;
@@ -1535,8 +1634,7 @@ namespace HostFixes
                     return;
                 }
 
-                StartMatchLever lever = FindFirstObjectByType<StartMatchLever>();
-                float distanceToLever = Vector3.Distance(lever.transform.position, player.transform.position);
+                float distanceToLever = Vector3.Distance(instance.transform.position, player.transform.position);
                 if (configLimitShipLeverDistance.Value > 1f && distanceToLever > configLimitShipLeverDistance.Value)
                 {
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
@@ -1609,7 +1707,7 @@ namespace HostFixes
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
-            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
+            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams _)
             {
                 if (itemOnCooldown.Contains(instance.NetworkObjectId))
                 {
@@ -1677,13 +1775,15 @@ namespace HostFixes
                     int spent = instance.groupCredits - newGroupCredits;
                     if (cost != spent && !instance.hasWarrantyTicket)
                     {
-                        Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) credits spent does not equal cost of vehicle. Current credits: {instance.groupCredits} Vehicle cost: {cost} Spent: {spent}.");
+                        Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) credits spent does not equal cost of vehicle. " +
+                            $"Current credits: {instance.groupCredits} Vehicle cost: {cost} Spent: {spent}.");
                         return;
                     }
                 }
                 catch (KeyNotFoundException)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to buy a vehicle that is not in the buyable vehicles list. (vehicleID: {vehicleID})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to buy a vehicle that is not in the buyable vehicles list. " +
+                        $"(vehicleID: {vehicleID})");
                     return;
                 }
 
@@ -1797,14 +1897,21 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 if (playerId != senderPlayerId)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing SetPlayerInControlOfVehicleServerRpc on another player. ({playerId})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing SetPlayerInControlOfVehicleServerRpc on another player. " +
+                        $"({playerId})");
                     return;
                 }
 
                 instance.SetPlayerInControlOfVehicleServerRpc(senderPlayerId);
             }
 
-            public void RemovePlayerControlOfVehicleServerRpc(int playerId, Vector3 carLocation, Quaternion carRotation, bool setKeyInIgnition, VehicleController instance, ServerRpcParams serverRpcParams)
+            public void RemovePlayerControlOfVehicleServerRpc(
+                int playerId, 
+                Vector3 carLocation, 
+                Quaternion carRotation, 
+                bool setKeyInIgnition, 
+                VehicleController instance, 
+                ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -1816,7 +1923,8 @@ namespace HostFixes
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 if (playerId != senderPlayerId)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing RemovePlayerControlOfVehicleServerRpc on another player. ({playerId})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing RemovePlayerControlOfVehicleServerRpc on another player. " +
+                        $"({playerId})");
                     return;
                 }
 
@@ -1874,7 +1982,8 @@ namespace HostFixes
 
                 if (radioStation < 0 || radioStation >= instance.radioClips.Length)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to set the radio to a station that doesn't exist. (radioStation: {radioStation})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to set the radio to a station that doesn't exist. " +
+                        $"(radioStation: {radioStation})");
                     return;
                 }
 
@@ -1963,7 +2072,12 @@ namespace HostFixes
                 }
             }
 
-            public void UpdateAnimClientRpc(bool setBool, bool playSecondaryAudios, int playerWhoTriggered, AnimatedObjectTrigger instance, ClientRpcParams clientRpcParams = default)
+            public void UpdateAnimClientRpc(
+                bool setBool, 
+                bool playSecondaryAudios, 
+                int playerWhoTriggered, 
+                AnimatedObjectTrigger instance, 
+                ClientRpcParams clientRpcParams = default)
             {
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
                 {

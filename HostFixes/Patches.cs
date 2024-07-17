@@ -70,7 +70,11 @@ namespace HostFixes
 
                 if (found)
                 {
-                    codes.Insert(location + 1, Transpilers.EmitDelegate<Func<IEnumerable<PlaceableShipObject>, IEnumerable<PlaceableShipObject>>>(placeableShipObject => placeableShipObject.Where(placeableShipObject => placeableShipObject.parentObject != null)));
+                    codes.Insert(location + 1, Transpilers.EmitDelegate<Func<IEnumerable<PlaceableShipObject>, IEnumerable<PlaceableShipObject>>>(
+                        placeableShipObject => placeableShipObject.Where(
+                            placeableShipObject => placeableShipObject.parentObject != null)
+                        )
+                    );
                 }
                 else
                 {
@@ -159,7 +163,10 @@ namespace HostFixes
         [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
         class MapSteamIdToClientId
         {
-            public static void Postfix(GameNetworkManager __instance, ref NetworkManager.ConnectionApprovalRequest request, ref NetworkManager.ConnectionApprovalResponse response)
+            public static void Postfix(
+                GameNetworkManager __instance, 
+                ref NetworkManager.ConnectionApprovalRequest request, 
+                ref NetworkManager.ConnectionApprovalResponse response)
             {
                 if (!__instance.disableSteam)
                 {
