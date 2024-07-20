@@ -26,10 +26,6 @@
         <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)'))=./,$([System.IO.Path]::GetFullPath('$(HOME)'))=~/"</PathMap>
     </PropertyGroup>
 
-    <PropertyGroup>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
-
     <ItemGroup>
         <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
         <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />

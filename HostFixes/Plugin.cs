@@ -23,8 +23,8 @@ namespace HostFixes
     {
         internal static ManualLogSource Log = null!;
         internal static List<ulong> votedToLeaveEarlyPlayers = [];
-        internal static Dictionary<int, int>? moons;
-        internal static Dictionary<int, int>? vehicleCosts;
+        internal static Dictionary<int, int> moons = [];
+        internal static Dictionary<int, int> vehicleCosts = [];
         internal static Dictionary<int, int> unlockablePrices = [];
         internal static Dictionary<ulong, string> playerSteamNames = [];
         internal static Dictionary<ulong, Vector3> playerPositions = [];
@@ -447,11 +447,14 @@ namespace HostFixes
 
                 Terminal terminal = FindObjectOfType<Terminal>();
 
-                moons ??= terminal.terminalNodes.allKeywords
-                    .First(keyword => keyword.name == "Route").compatibleNouns
-                    .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
-                    .Select(moon => moon.result.terminalOptions.First(option => option.noun.name == "Confirm"))
-                    .ToDictionary(option => option.result.buyRerouteToMoon, option => option.result.itemCost);
+                if (moons.Count == 0)
+                {
+                    moons = terminal.terminalNodes.allKeywords
+                        .First(keyword => keyword.name == "Route").compatibleNouns
+                        .GroupBy(moon => moon.noun).Select(moon => moon.First()) //Remove duplicate moons
+                        .Select(moon => moon.result.terminalOptions.First(option => option.noun.name == "Confirm"))
+                        .ToDictionary(option => option.result.buyRerouteToMoon, option => option.result.itemCost);
+                }
 
                 if (!moons.ContainsKey(levelID))
                 {
