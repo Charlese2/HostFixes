@@ -1728,10 +1728,21 @@ namespace HostFixes
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
-            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams _)
+            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, ServerRpcParams serverRpcParams)
             {
-                if (itemOnCooldown.Contains(instance.NetworkObjectId))
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
+                    Log.LogError($"[ActivateItemServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                if (itemOnCooldown.Contains(instance.NetworkObjectId)) return;
+
+                if (instance.playerHeldBy is null) 
+                {
+                    PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried activate an item that is not held by anyone.");
                     return;
                 }
 
