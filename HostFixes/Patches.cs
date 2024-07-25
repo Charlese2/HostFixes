@@ -85,6 +85,42 @@ namespace HostFixes
             }
         }
 
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.SyncAlreadyHeldObjectsClientRpc))]
+        internal static class SyncAlreadyHeldObjectsToCallingClient
+        {
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                bool found = false;
+                int location = -1;
+                List<CodeInstruction> codes = new(instructions);
+
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "__beginSendClientRpc" })
+                    {
+                        location = i;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found)
+                {
+                    codes.Insert(location - 1, new CodeInstruction(OpCodes.Ldarg, 5)); //int32 syncWithClient
+                    codes.Insert(location, Transpilers.EmitDelegate<Func<ClientRpcParams, ulong, ClientRpcParams>>((clientRpcParams, senderClientId) =>
+                    {
+                        return clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    }));
+                }
+                else
+                {
+                    Log.LogError("Could not patch SyncAlreadyHeldObjectsClientRpc");
+                }
+
+                return codes.AsEnumerable();
+            }
+        }
+
         [HarmonyWrapSafe]
         [HarmonyPatch(typeof(FacepunchTransport), "Steamworks.ISocketManager.OnConnecting")]
         class Identity_Fix
