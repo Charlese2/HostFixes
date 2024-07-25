@@ -19,7 +19,7 @@ using UnityEngine;
 
 namespace HostFixes
 {
-    [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin("com.github.CharlesE2.HostFixes", PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log = null!;
