@@ -1563,7 +1563,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.triggerAnimator.name.StartsWith("GarageDoorContainer"))
+                if (instance.triggerAnimator?.name.StartsWith("GarageDoorContainer") == true)
                 {
                     interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
                 }
