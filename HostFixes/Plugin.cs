@@ -37,6 +37,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configDisablePvpInShip = null!;
         public static ConfigEntry<bool> configLogSignalTranslatorMessages = null!;
         public static ConfigEntry<bool> configLogPvp = null!;
+        public static ConfigEntry<bool> configLogShipObjects = null!;
         public static ConfigEntry<bool> configCheckPrices = null!;
         public static ConfigEntry<bool> configExperimentalChanges = null!;
         public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
@@ -95,6 +96,8 @@ namespace HostFixes
                 "Log messages that players send on the signal translator.");
             configLogPvp = Config.Bind("Logging", "Log PvP damage", false, 
                 "Log when a player damages another player.");
+            configLogShipObjects = Config.Bind("Logging", "Log movement of ship furniture.", false,
+                "Log when a player moves ship unlockables.");
             configCheckPrices = Config.Bind("General", "Check prices", false, 
                 "Check if the price on the terminal matches what is sent by the client.");
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, 
@@ -657,6 +660,21 @@ namespace HostFixes
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to place a ship object ouside of the ship.");
                     return;
+                }
+
+                PlaceableShipObject shipObjectContainer = gameObject.GetComponentInChildren<PlaceableShipObject>();
+
+                if (shipObjectContainer?.parentObject?.GetType() == typeof(ShipTeleporter) &&
+                    shipObjectContainer.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
+                    teleporter.isInverseTeleporter &&
+                    pressTeleportButtonOnCooldown.Contains(teleporter))
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) moved inverse teleporter while it is currently teleporting.");
+                }
+
+                if (configLogShipObjects.Value)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object. ({shipObjectContainer?.parentObject?.name})");
                 }
 
                 instance.PlaceShipObjectServerRpc(newPosition, newRotation, objectRef, playerWhoMoved);
