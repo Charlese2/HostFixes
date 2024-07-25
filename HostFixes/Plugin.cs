@@ -2126,7 +2126,7 @@ namespace HostFixes
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
                 {
                     FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [2951629574u, clientRpcParams, RpcDelivery.Reliable]);
-                    bufferWriter.WriteValueSafe(in leverPulled, default);
+                    bufferWriter.WriteValueSafe(in leverPulled);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 2951629574u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
@@ -2141,9 +2141,9 @@ namespace HostFixes
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
                 {
                     FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [848048148u, clientRpcParams, RpcDelivery.Reliable]);
-                    bufferWriter.WriteValueSafe(in setBool, default);
-                    bufferWriter.WriteValueSafe(in playSecondaryAudios, default);
-                    bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
+                    bufferWriter.WriteValueSafe(in setBool);
+                    bufferWriter.WriteValueSafe(in playSecondaryAudios);
+                    BytePacker.WriteValueBitPacked(bufferWriter, playerWhoTriggered);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
