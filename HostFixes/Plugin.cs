@@ -1010,6 +1010,8 @@ namespace HostFixes
                 if (sendingPlayer.isPlayerDead)
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to pickup an object while they are dead on the server.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.GrabObjectClientRpc(false, grabbedObject, instance, clientRpcParams);
                     return;
                 }
 
@@ -1028,7 +1030,8 @@ namespace HostFixes
                     {
                         Log.LogWarning($"Player #{senderPlayerId} ({username}) " +
                             $"Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
-                        instance.GrabObjectClientRpc(false, grabbedObject);
+                        ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                        HostFixesServerSendRpcs.Instance.GrabObjectClientRpc(false, grabbedObject, instance, clientRpcParams);
                         return;
                     }
 
@@ -2142,6 +2145,21 @@ namespace HostFixes
                     bufferWriter.WriteValueSafe(in playSecondaryAudios, default);
                     bufferWriter.WriteValueSafe(in playerWhoTriggered, default);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 848048148u, clientRpcParams, RpcDelivery.Reliable]);
+                }
+            }
+
+            public void GrabObjectClientRpc(
+                bool grabValidated, 
+                NetworkObjectReference grabbedObject, 
+                PlayerControllerB instance, 
+                ClientRpcParams clientRpcParams = default)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [2552479808u, clientRpcParams, RpcDelivery.Reliable]);
+                    bufferWriter.WriteValueSafe(in grabValidated);
+                    bufferWriter.WriteValueSafe(in grabbedObject);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 2552479808u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
