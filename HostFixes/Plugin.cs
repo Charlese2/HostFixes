@@ -1318,9 +1318,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (pressTeleportButtonOnCooldown) return;
+                if (pressTeleportButtonOnCooldown.Contains(instance)) return;
 
-                Instance.StartCoroutine(PressTeleportButtonCooldown());
+                Instance.StartCoroutine(PressTeleportButtonCooldown(instance));
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 if (player.isPlayerDead)
