@@ -56,7 +56,7 @@ namespace HostFixes
         private static List<ulong> itemOnCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
-        private static bool pressTeleportButtonOnCooldown;
+        private static HashSet<ShipTeleporter> pressTeleportButtonOnCooldown = [];
 
         public static Plugin Instance { get; private set; } = null!;
         public static Dictionary<ulong, uint> SteamIdtoConnectionIdMap { get; private set; } = [];
@@ -193,11 +193,11 @@ namespace HostFixes
             buyShipUnlockableOnCooldown = false;
         }
 
-        private static IEnumerator PressTeleportButtonCooldown()
+        private static IEnumerator PressTeleportButtonCooldown(ShipTeleporter instance)
         {
-            pressTeleportButtonOnCooldown = true;
-            yield return new WaitForSeconds(0.5f);
-            pressTeleportButtonOnCooldown = false;
+            pressTeleportButtonOnCooldown.Add(instance);
+            yield return new WaitForSeconds(0.65833f);
+            pressTeleportButtonOnCooldown.Remove(instance);
         }
 
         private static IEnumerator ActivateItemCooldown(ulong itemNetworkId)
