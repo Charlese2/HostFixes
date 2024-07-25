@@ -7,7 +7,6 @@ using LobbyCompatibility.Enums;
 using LobbyCompatibility.Features;
 using Steamworks;
 using Steamworks.Data;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -127,7 +126,7 @@ namespace HostFixes
 
         private void LobbyCompatibility()
         {
-            PluginHelper.RegisterPlugin(PluginInfo.PLUGIN_GUID, Version.Parse(PluginInfo.PLUGIN_VERSION), CompatibilityLevel.ServerOnly, VersionStrictness.None);
+            PluginHelper.RegisterPlugin(PluginInfo.PLUGIN_GUID, System.Version.Parse(PluginInfo.PLUGIN_VERSION), CompatibilityLevel.ServerOnly, VersionStrictness.None);
         }
 
         private void UpdatePlayerPositionCache()
@@ -498,7 +497,7 @@ namespace HostFixes
                     //Replace <> from received messages with () to prevent injected Text Tags.
                     sanitizedChatMessage = Regex.Replace(chatMessage, @"<(\S+?)>", "($+)");
                 }
-                catch (Exception exception)
+                catch (System.Exception exception)
                 {
                     Log.LogError($"Player #{senderPlayerId} ({username}) Regex Exception: {exception} Chat Message: ({chatMessage})");
                     return;
@@ -576,7 +575,7 @@ namespace HostFixes
                 {
                     votedToLeaveEarlyPlayers.Add(senderClientId);
                     int neededVotes = StartOfRound.Instance.connectedPlayersAmount + 1 - StartOfRound.Instance.livingPlayers;
-                    if (votedToLeaveEarlyPlayers.Count >= Math.Max(neededVotes, configMinimumVotesToLeaveEarly.Value))
+                    if (votedToLeaveEarlyPlayers.Count >= System.Math.Max(neededVotes, configMinimumVotesToLeaveEarly.Value))
                     {
                         instance.votesForShipToLeaveEarly = votedToLeaveEarlyPlayers.Count;
                         instance.SetShipLeaveEarlyClientRpc(instance.normalizedTimeOfDay + 0.1f, instance.votesForShipToLeaveEarly);
@@ -632,8 +631,7 @@ namespace HostFixes
                     try
                     {
                         GameObject networkObject = (GameObject)objectRef;
-                        PlaceableShipObject placeableShipObject = networkObject.GetComponentInChildren<PlaceableShipObject>() ?? 
-                            throw new Exception("PlaceableShipObject Not Found");
+                            throw new System.Exception("PlaceableShipObject Not Found");
                         if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || 
                             Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                         {
@@ -644,7 +642,7 @@ namespace HostFixes
                             return;
                         }
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         Log.LogWarning(e);
                         if (newRotation.x != 270f || newRotation.z != 0f) //Usually true for most ship objects
@@ -995,7 +993,7 @@ namespace HostFixes
 
                     instance.GrabObjectServerRpc(grabbedObject);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Log.LogError($"Couldn't do grab distance check. Exception: {e}");
                 }
@@ -1127,7 +1125,7 @@ namespace HostFixes
                         return;
                     }
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Log.LogError(e);
                 }
@@ -1376,7 +1374,7 @@ namespace HostFixes
                     allowedMovement[instance.playerClientId] = true;
                     instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Log.LogError(e);
                     instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
