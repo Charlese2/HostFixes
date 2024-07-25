@@ -303,7 +303,13 @@ namespace HostFixes
 
                 if (instance.numberOfItemsInDropship + boughtItems.Length > 12)
                 {
-                    Log.LogWarning($"Trying to buy too many items.");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to buy too many items.");
+                    return;
+                }
+
+                if (newGroupCredits < 0)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried tried to set credits to a negative number while buying items.");
                     return;
                 }
 
@@ -379,6 +385,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (newGroupCreditsAmount < 0)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried tried to set credits to a negative number unlocking ship unlockable.");
+                    return;
+                }
+
                 if (senderClientId != 0 && terminal.groupCredits - unlockableCost != newGroupCreditsAmount)
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for unlockable. " +
@@ -419,7 +431,7 @@ namespace HostFixes
 
                 if (newGroupCreditsAmount < 0)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to set credits to a negative number ({newGroupCreditsAmount}).");
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to set credits to a negative number while changing levels.");
                     return;
                 }
 
@@ -1800,6 +1812,12 @@ namespace HostFixes
                     .Where(noun => noun.result.buyVehicleIndex != -1)
                     .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
                     .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
+
+                if (newGroupCredits < 0)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried tried to set credits to a negative number.");
+                    return;
+                }
 
                 try
                 {
