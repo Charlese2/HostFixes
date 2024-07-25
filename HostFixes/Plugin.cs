@@ -1493,13 +1493,14 @@ namespace HostFixes
                     return;
                 }
 
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 if (playerNum != senderPlayerId)
                 {
-                    Log.LogWarning($"[UpdateUsedByPlayerServerRpc] playerNum ({playerNum}) != senderPlayerId ({senderPlayerId})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to call UpdateUsedByPlayerServerRpc from another player. ({playerNum})");
                     return;
                 }
 
-                instance.UpdateUsedByPlayerServerRpc(playerNum);
+                instance.UpdateUsedByPlayerServerRpc(senderPlayerId);
             }
 
             public void StopUsingServerRpc(int playerUsing, InteractTrigger instance, ServerRpcParams serverRpcParams)
