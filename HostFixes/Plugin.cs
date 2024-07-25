@@ -629,17 +629,19 @@ namespace HostFixes
                     return;
                 }
 
+                GameObject gameObject = objectRef;
+
                 if (configShipObjectRotationCheck.Value)
                 {
                     try
                     {
-                        GameObject networkObject = (GameObject)objectRef;
+                        PlaceableShipObject placeableShipObject = gameObject.GetComponentInChildren<PlaceableShipObject>() ?? 
                             throw new System.Exception("PlaceableShipObject Not Found");
                         if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || 
                             Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                         {
                             Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                                $"tried to place a ship object ({placeableShipObject.name}) with the wrong rotation. " +
+                                $"tried to place a ship object ({placeableShipObject.parentObject?.name}) with the wrong rotation. " +
                                 $"x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) " +
                                 $"z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
                             return;
