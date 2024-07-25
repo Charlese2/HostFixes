@@ -1377,7 +1377,7 @@ namespace HostFixes
                         return;
                     }
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     InfoPanel.Instance.Log(e);
                 }
