@@ -423,6 +423,12 @@ namespace HostFixes
 
                 Instance.StartCoroutine(ChangeLevelCooldown(senderPlayerId));
 
+                if (senderClientId == 0)
+                {
+                    instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
+                    return;
+                }
+
                 if (StartOfRound.Instance.allPlayerScripts[senderPlayerId].isPlayerDead)
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
