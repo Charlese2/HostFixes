@@ -455,29 +455,27 @@ namespace HostFixes
                     .Select(moon => moon.result.terminalOptions.First(option => option.noun.name == "Confirm"))
                     .ToDictionary(option => option.result.buyRerouteToMoon, option => option.result.itemCost);
 
-                try
-                {
-                    int moonCost = moons[levelID];
-                    if (senderClientId != 0 && terminal.groupCredits - moonCost != newGroupCreditsAmount)
-                    {
-                        Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. " +
-                            $"Current credits: {terminal.groupCredits} Moon cost: {moonCost} Sent credit Amount: {newGroupCreditsAmount}");
-                        return;
-                    }
-                    else
-                    {
-                        if (newGroupCreditsAmount > terminal.groupCredits)
-                        {
-                            Log.LogWarning($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. " +
-                                $"Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
-                            return;
-                        }
-                    }
-                }
-                catch (KeyNotFoundException)
+                if (!moons.ContainsKey(levelID))
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({username}) sent levelID ({levelID}) that is not in the moons array.");
                     return;
+                }
+
+                int moonCost = moons[levelID];
+                if (terminal.groupCredits - moonCost != newGroupCreditsAmount)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. " +
+                        $"Spent credits: {terminal.groupCredits - newGroupCreditsAmount} Moon cost: {moonCost}");
+                    return;
+                }
+                else
+                {
+                    if (newGroupCreditsAmount > terminal.groupCredits)
+                    {
+                        Log.LogWarning($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. " +
+                            $"Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                        return;
+                    }
                 }
 
                 instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
@@ -1828,21 +1826,19 @@ namespace HostFixes
                     return;
                 }
 
-                try
-                {
-                    int cost = (int)(vehicleCosts[vehicleID] * (instance.itemSalesPercentages[vehicleID + instance.buyableItemsList.Length] / 100f));
-                    int spent = instance.groupCredits - newGroupCredits;
-                    if (cost != spent && !instance.hasWarrantyTicket)
-                    {
-                        Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) credits spent does not equal cost of vehicle. " +
-                            $"Current credits: {instance.groupCredits} Vehicle cost: {cost} Spent: {spent}.");
-                        return;
-                    }
-                }
-                catch (KeyNotFoundException)
+                if (!vehicleCosts.ContainsKey(vehicleID))
                 {
                     Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to buy a vehicle that is not in the buyable vehicles list. " +
                         $"(vehicleID: {vehicleID})");
+                    return;
+                }
+
+                int cost = (int)(vehicleCosts[vehicleID] * (instance.itemSalesPercentages[vehicleID + instance.buyableItemsList.Length] / 100f));
+                int spent = instance.groupCredits - newGroupCredits;
+                if (cost != spent && !instance.hasWarrantyTicket)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) credits spent does not equal cost of vehicle. " +
+                        $"Current credits: {instance.groupCredits} Vehicle cost: {cost} Spent: {spent}.");
                     return;
                 }
 
