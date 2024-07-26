@@ -46,7 +46,7 @@ namespace HostFixes.UI
             }
             else
             {
-                Plugin.Log.LogError("test is null");
+                Plugin.Log.LogError("MyText is null");
             }
             Plugin.Log.LogEvent += Log_LogEvent;
         }
@@ -60,22 +60,22 @@ namespace HostFixes.UI
 
         public void Log(object data)
         {
-            try
+            if (logQueue.Count == 10)
             {
-                if (logQueue.Count == 10)
-                {
-                    logQueue.Dequeue();
-                }
-                logQueue.Enqueue(data.ToString());
-                MyText.text = "";
-                foreach (string log in logQueue)
-                {
-                    MyText.text += $"{log}\n";
-                }
+                logQueue.Dequeue();
             }
-            catch (Exception e)
+            logQueue.Enqueue(data.ToString());
+
+            if (MyText is null)
             {
-                Plugin.Log.LogError(e);
+                Plugin.Log.LogError("MyText is null. Can't add to GUI log.");
+                return;
+            }
+
+            MyText.text = "";
+            foreach (string log in logQueue)
+            {
+                MyText.text += $"{log}\n";
             }
         }
     }
