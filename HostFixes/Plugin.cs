@@ -606,11 +606,11 @@ namespace HostFixes
             }
 
             public void PlaceShipObjectServerRpc(
-                Vector3 newPosition, 
-                Vector3 newRotation, 
-                NetworkObjectReference objectRef, 
-                int playerWhoMoved, 
-                ShipBuildModeManager instance, 
+                Vector3 newPosition,
+                Vector3 newRotation,
+                NetworkObjectReference objectRef,
+                int playerWhoMoved,
+                ShipBuildModeManager instance,
                 ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -859,10 +859,10 @@ namespace HostFixes
             }
 
             public void DamagePlayerFromOtherClientServerRpc(
-                int damageAmount, 
-                Vector3 hitDirection, 
-                int playerWhoHit, 
-                PlayerControllerB instance, 
+                int damageAmount,
+                Vector3 hitDirection,
+                int playerWhoHit,
+                PlayerControllerB instance,
                 ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1036,12 +1036,12 @@ namespace HostFixes
             }
 
             public void ThrowObjectServerRpc(
-                NetworkObjectReference grabbedObject, 
-                bool droppedInElevator, 
-                bool droppedInShipRoom, 
-                Vector3 targetFloorPosition, 
-                int floorYRot, 
-                PlayerControllerB instance, 
+                NetworkObjectReference grabbedObject,
+                bool droppedInElevator,
+                bool droppedInShipRoom,
+                Vector3 targetFloorPosition,
+                int floorYRot,
+                PlayerControllerB instance,
                 ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1109,11 +1109,11 @@ namespace HostFixes
             }
 
             public void PlaceObjectServerRpc(
-                NetworkObjectReference grabbedObject, 
-                NetworkObjectReference parentObject, 
-                Vector3 placePositionOffset, 
-                bool matchRotationOfParent, 
-                PlayerControllerB instance, 
+                NetworkObjectReference grabbedObject,
+                NetworkObjectReference parentObject,
+                Vector3 placePositionOffset,
+                bool matchRotationOfParent,
+                PlayerControllerB instance,
                 ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -1363,12 +1363,12 @@ namespace HostFixes
             }
 
             public void UpdatePlayerPositionServerRpc(
-                Vector3 newPos, 
-                bool inElevator, 
-                bool inShipRoom, 
-                bool exhausted, 
-                bool isPlayerGrounded, 
-                PlayerControllerB instance, 
+                Vector3 newPos,
+                bool inElevator,
+                bool inShipRoom,
+                bool exhausted,
+                bool isPlayerGrounded,
+                PlayerControllerB instance,
                 ServerRpcParams _)
             {
                 if (instance.isPlayerDead)
@@ -1427,10 +1427,10 @@ namespace HostFixes
             }
 
             public void UpdatePlayerRotationFullServerRpc(
-                Vector3 playerEulers, 
-                Vector3 cameraRotation, 
-                bool syncingCameraRotation, 
-                PlayerControllerB instance, 
+                Vector3 playerEulers,
+                Vector3 cameraRotation,
+                bool syncingCameraRotation,
+                PlayerControllerB instance,
                 ServerRpcParams _)
             {
                 if (allowedMovement.ContainsKey(instance.playerClientId) && !allowedMovement[instance.playerClientId])
@@ -1507,10 +1507,10 @@ namespace HostFixes
             }
 
             public void UpdateAnimServerRpc(
-                bool setBool, 
-                bool playSecondaryAudios, 
-                int playerWhoTriggered, 
-                AnimatedObjectTrigger instance, 
+                bool setBool,
+                bool playSecondaryAudios,
+                int playerWhoTriggered,
+                AnimatedObjectTrigger instance,
                 ServerRpcParams serverRpcParams)
             {
                 Transform interactableTransfrom = instance.transform;
@@ -1738,7 +1738,7 @@ namespace HostFixes
 
                 if (itemOnCooldown.Contains(instance.NetworkObjectId)) return;
 
-                if (instance.playerHeldBy is null) 
+                if (instance.playerHeldBy is null)
                 {
                     PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                     Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried activate an item that is not held by anyone.");
@@ -1794,11 +1794,14 @@ namespace HostFixes
                     return;
                 }
 
-                vehicleCosts ??= instance.terminalNodes.allKeywords
-                    .First(keyword => keyword.name == "Buy").compatibleNouns
-                    .Where(noun => noun.result.buyVehicleIndex != -1)
-                    .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
-                    .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
+                if (vehicleCosts.Count == 0)
+                {
+                    vehicleCosts = instance.terminalNodes.allKeywords
+                        .First(keyword => keyword.name == "Buy").compatibleNouns
+                        .Where(noun => noun.result.buyVehicleIndex != -1)
+                        .GroupBy(noun => noun.result.buyItemIndex).Select(noun => noun.First()) //Remove duplicate vehicles
+                        .ToDictionary(vehicleNoun => vehicleNoun.result.buyVehicleIndex, vehicleNoun => vehicleNoun.result.itemCost);
+                }
 
                 if (newGroupCredits < 0)
                 {
@@ -1941,11 +1944,11 @@ namespace HostFixes
             }
 
             public void RemovePlayerControlOfVehicleServerRpc(
-                int playerId, 
-                Vector3 carLocation, 
-                Quaternion carRotation, 
-                bool setKeyInIgnition, 
-                VehicleController instance, 
+                int playerId,
+                Vector3 carLocation,
+                Quaternion carRotation,
+                bool setKeyInIgnition,
+                VehicleController instance,
                 ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -2108,10 +2111,10 @@ namespace HostFixes
             }
 
             public void UpdateAnimClientRpc(
-                bool setBool, 
-                bool playSecondaryAudios, 
-                int playerWhoTriggered, 
-                AnimatedObjectTrigger instance, 
+                bool setBool,
+                bool playSecondaryAudios,
+                int playerWhoTriggered,
+                AnimatedObjectTrigger instance,
                 ClientRpcParams clientRpcParams = default)
             {
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
@@ -2125,9 +2128,9 @@ namespace HostFixes
             }
 
             public void GrabObjectClientRpc(
-                bool grabValidated, 
-                NetworkObjectReference grabbedObject, 
-                PlayerControllerB instance, 
+                bool grabValidated,
+                NetworkObjectReference grabbedObject,
+                PlayerControllerB instance,
                 ClientRpcParams clientRpcParams = default)
             {
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
