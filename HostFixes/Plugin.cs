@@ -65,11 +65,11 @@ namespace HostFixes
         public static Dictionary<ulong, ulong> ClientIdToSteamIdMap { get; private set; } = [];
 
         private static readonly MethodInfo BeginSendClientRpc = typeof(NetworkBehaviour).GetMethod(
-                "__beginSendClientRpc", 
+                "__beginSendClientRpc",
                 BindingFlags.NonPublic | BindingFlags.Instance
             );
         private static readonly MethodInfo EndSendClientRpc = typeof(NetworkBehaviour).GetMethod(
-                "__endSendClientRpc", 
+                "__endSendClientRpc",
                 BindingFlags.NonPublic | BindingFlags.Instance
             );
 
@@ -92,25 +92,25 @@ namespace HostFixes
                 "Minimum number of votes needed for the ship to leave early. Still requires that all the dead players have voted to leave.");
             configDisablePvpInShip = Config.Bind("General", "Disable PvP inside the ship", false,
                 "If a player is inside the ship, they can't be damaged by other players.");
-            configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false, 
+            configLogSignalTranslatorMessages = Config.Bind("Logging", "Log Signal Translator Messages", false,
                 "Log messages that players send on the signal translator.");
-            configLogPvp = Config.Bind("Logging", "Log PvP damage", false, 
+            configLogPvp = Config.Bind("Logging", "Log PvP damage", false,
                 "Log when a player damages another player.");
             configLogShipObjects = Config.Bind("Logging", "Log movement of ship furniture.", false,
                 "Log when a player moves ship unlockables.");
-            configCheckPrices = Config.Bind("General", "Check prices", false, 
+            configCheckPrices = Config.Bind("General", "Check prices", false,
                 "Check if the price on the terminal matches what is sent by the client.");
-            configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false, 
+            configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false,
                 "Enable experimental changes that may trigger on legitimate players (Requires more testing)");
-            configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false, 
+            configExperimentalPositionCheck = Config.Bind("Experimental", "Experimental Position Checks.", false,
                 "Enable experimental checks to prevent extreme client teleporting (Requires more testing)");
-            configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true, 
+            configShipObjectRotationCheck = Config.Bind("General", "Check ship object rotation", true,
                 "Only allow ship objects to be placed if the they are still upright.");
-            configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false, 
+            configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false,
                 "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
-            configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5, 
+            configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5,
                 "Limit distance that someone can pull the ship lever from. 0 to disable.");
-            configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5, 
+            configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5,
                 "Limit distance that someone can press the teleporter buttton from. 0 to disable.");
 
             Harmony harmony = new(PluginInfo.PLUGIN_GUID);
@@ -316,15 +316,13 @@ namespace HostFixes
                 Dictionary<int, int> boughtItemsCount = boughtItems.GroupBy(item => item).ToDictionary(item => item.Key, item => item.Count());
                 foreach (int item in boughtItemsCount.Keys)
                 {
-                    try
-                    {
-                        cost += (int)(instance.buyableItemsList[item].creditsWorth * (instance.itemSalesPercentages[item] / 100f) * boughtItemsCount[item]);
-                    }
-                    catch
+                    if (item < 0 || item >= instance.buyableItemsList.Length || item >= instance.itemSalesPercentages.Length)
                     {
                         Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
                         return;
                     }
+
+                    cost += (int)(instance.buyableItemsList[item].creditsWorth * (instance.itemSalesPercentages[item] / 100f) * boughtItemsCount[item]);
                 }
 
                 if (instance.groupCredits - cost != newGroupCredits)
@@ -514,16 +512,8 @@ namespace HostFixes
                     return;
                 }
 
-                try
-                {
-                    //Replace <> from received messages with () to prevent injected Text Tags.
-                    sanitizedChatMessage = Regex.Replace(chatMessage, @"<(\S+?)>", "($+)");
-                }
-                catch (System.Exception exception)
-                {
-                    Log.LogError($"Player #{senderPlayerId} ({username}) Regex Exception: {exception} Chat Message: ({chatMessage})");
-                    return;
-                }
+                //Replace <> from received messages with () to prevent injected Text Tags.
+                sanitizedChatMessage = Regex.Replace(chatMessage, @"<(\S+?)>", "($+)");
 
                 if (string.IsNullOrWhiteSpace(sanitizedChatMessage))
                 {
@@ -650,30 +640,29 @@ namespace HostFixes
 
                 GameObject gameObject = objectRef;
 
+                if (gameObject is null)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object that doesn't exist.");
+                    return;
+                }
+
+                PlaceableShipObject placeableShipObject = gameObject.GetComponentInChildren<PlaceableShipObject>();
+
+                if (placeableShipObject is null)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object using an invalid object. ({gameObject.name})");
+                }
+
                 if (configShipObjectRotationCheck.Value)
                 {
-                    try
+                    if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) ||
+                        Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                     {
-                        PlaceableShipObject placeableShipObject = gameObject.GetComponentInChildren<PlaceableShipObject>() ?? 
-                            throw new System.Exception("PlaceableShipObject Not Found");
-                        if (Mathf.RoundToInt(newRotation.x) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.x) || 
-                            Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
-                        {
-                            Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                                $"tried to place a ship object ({placeableShipObject.parentObject?.name}) with the wrong rotation. " +
-                                $"x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) " +
-                                $"z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
-                            return;
-                        }
-                    }
-                    catch (System.Exception e)
-                    {
-                        Log.LogWarning(e);
-                        if (newRotation.x != 270f || newRotation.z != 0f) //Usually true for most ship objects
-                        {
-                            Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) tried to place a ship object with the wrong rotation.");
-                            return;
-                        }
+                        Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) " +
+                            $"tried to place a ship object ({placeableShipObject.parentObject?.name}) with the wrong rotation. " +
+                            $"x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) " +
+                            $"z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
+                        return;
                     }
                 }
 
@@ -683,10 +672,8 @@ namespace HostFixes
                     return;
                 }
 
-                PlaceableShipObject shipObjectContainer = gameObject.GetComponentInChildren<PlaceableShipObject>();
-
-                if (shipObjectContainer?.parentObject?.GetType() == typeof(ShipTeleporter) &&
-                    shipObjectContainer.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
+                if (placeableShipObject?.parentObject?.GetType() == typeof(ShipTeleporter) &&
+                    placeableShipObject.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
                     teleporter.isInverseTeleporter &&
                     pressTeleportButtonOnCooldown.Contains(teleporter))
                 {
@@ -695,7 +682,7 @@ namespace HostFixes
 
                 if (configLogShipObjects.Value)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object. ({shipObjectContainer?.parentObject?.name})");
+                    Log.LogWarning($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object. ({placeableShipObject?.parentObject?.name})");
                 }
 
                 instance.PlaceShipObjectServerRpc(newPosition, newRotation, objectRef, playerWhoMoved);
@@ -1013,32 +1000,39 @@ namespace HostFixes
                     return;
                 }
 
+                GameObject grabbedGameObject = grabbedObject;
+
+                if (grabbedGameObject == null)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) sent a network object that does not exist. ({grabbedObject.NetworkObjectId})");
+                    return;
+                }
+
                 if (!configLimitGrabDistance.Value)
                 {
                     instance.GrabObjectServerRpc(grabbedObject);
                     return;
                 }
 
-                try
-                {
-                    GameObject grabbedGameObject = (GameObject)grabbedObject;
-                    float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
-                    bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
-                    if (distanceToObject > instance.grabDistance + 7 && isNotBody)
-                    {
-                        Log.LogWarning($"Player #{senderPlayerId} ({username}) " +
-                            $"Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
-                        ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
-                        HostFixesServerSendRpcs.Instance.GrabObjectClientRpc(false, grabbedObject, instance, clientRpcParams);
-                        return;
-                    }
+                float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
+                bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
 
-                    instance.GrabObjectServerRpc(grabbedObject);
-                }
-                catch (System.Exception e)
+                if (instance.isInHangarShipRoom && grabbedGameObject.TryGetComponent(out GrabbableObject grabbableObject) == true && grabbableObject.isInShipRoom)
                 {
-                    Log.LogError($"Couldn't do grab distance check. Exception: {e}");
+                    instance.GrabObjectServerRpc(grabbedObject);
+                    return;
                 }
+
+                if (distanceToObject > instance.grabDistance + 7 && isNotBody)
+                {
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) " +
+                        $"Object ({grabbedGameObject.name}) pickup distance ({distanceToObject}) is too far away. Could be desync.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.GrabObjectClientRpc(false, grabbedObject, instance, clientRpcParams);
+                    return;
+                }
+
+                instance.GrabObjectServerRpc(grabbedObject);
             }
 
             public void ThrowObjectServerRpc(
@@ -1137,39 +1131,46 @@ namespace HostFixes
 
                 string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
 
-                GameObject itemParent = parentObject;
                 GameObject grabbedItem = grabbedObject;
 
-                try
+                if (grabbedItem == null)
                 {
-                    float placeDistance = Vector3.Distance(instance.transform.position, itemParent.transform.position);
-
-                    if (placeDistance > instance.grabDistance + 7)
-                    {
-                        Vector3 placeLocalPosition;
-
-                        if (instance.isInElevator)
-                        {
-                            placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(grabbedItem.transform.position);
-                        }
-                        else
-                        {
-                            placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
-                        }
-
-                        instance.ThrowObjectServerRpc(
-                            grabbedObject, 
-                            instance.isInElevator, 
-                            instance.isInHangarShipRoom, 
-                            placeLocalPosition, 
-                            (int)instance.transform.localEulerAngles.x
-                        );
-                        return;
-                    }
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) sent a grabbed item that doesn't exist ({grabbedObject.NetworkObjectId})");
+                    return;
                 }
-                catch (System.Exception e)
+
+                GameObject itemParent = parentObject;
+
+                if (itemParent == null)
                 {
-                    Log.LogError(e);
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) sent a parent object that doesn't exist ({parentObject.NetworkObjectId})");
+                    return;
+                }
+
+                float placeDistance = Vector3.Distance(instance.transform.position, itemParent.transform.position);
+
+                if (placeDistance > instance.grabDistance + 7)
+                {
+                    Vector3 placeLocalPosition;
+
+                    if (instance.isInElevator)
+                    {
+                        placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(grabbedItem.transform.position);
+                    }
+                    else
+                    {
+                        placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
+                    }
+
+                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to place an object to far away. ({placeDistance})");
+                    instance.ThrowObjectServerRpc(
+                        grabbedObject,
+                        instance.isInElevator,
+                        instance.isInHangarShipRoom,
+                        placeLocalPosition,
+                        (int)instance.transform.localEulerAngles.y
+                    );
+                    return;
                 }
 
 
@@ -1376,67 +1377,53 @@ namespace HostFixes
                     return;
                 }
 
-                try
+                Vector3 position = inElevator ? instance.transform.localPosition : instance.transform.position;
+                if (!onShip.TryGetValue(instance.playerClientId, out bool isOnShip) || isOnShip != inElevator)
                 {
-                    Vector3 position = inElevator ? instance.transform.localPosition : instance.transform.position;
-                    if (!onShip.TryGetValue(instance.playerClientId, out bool isOnShip) || isOnShip != inElevator)
-                    {
-                        playerPositions[instance.playerClientId] = position;
-                        positionCacheUpdateTime[instance.playerClientId] = Time.time;
-                        onShip[instance.playerClientId] = inElevator;
-                    }
+                    playerPositions[instance.playerClientId] = position;
+                    positionCacheUpdateTime[instance.playerClientId] = Time.time;
+                    onShip[instance.playerClientId] = inElevator;
+                }
 
-                    float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
+                float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
 
-                    float downwardDotProduct = Vector3.Dot((newPos - position).normalized, Vector3.down);
-                    float maxDistancePerTick = instance.movementSpeed * 
-                        (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
-                    if (downwardDotProduct > 0.3f || 
-                        StartOfRound.Instance.suckingPlayersOutOfShip || 
-                        StartOfRound.Instance.inShipPhase || 
-                        !configExperimentalPositionCheck.Value)
-                    {
-                        instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
-                        allowedMovement[instance.playerClientId] = true;
-                        return;
-                    }
-                    if (Vector3.Distance(newPos, position) > maxDistancePerTick * 2)
-                    {
-                        Vector3 coalescePos = Vector3.MoveTowards(position, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
-                        if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
-                        {
-                            allowedMovement[instance.playerClientId] = false;
-                            return;
-                        }
-
-                        instance.UpdatePlayerPositionServerRpc(coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
-                        return;
-                    }
-
+                float downwardDotProduct = Vector3.Dot((newPos - position).normalized, Vector3.down);
+                float maxDistancePerTick = instance.movementSpeed *
+                    (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
+                if (downwardDotProduct > 0.3f ||
+                    StartOfRound.Instance.suckingPlayersOutOfShip ||
+                    StartOfRound.Instance.inShipPhase ||
+                    !configExperimentalPositionCheck.Value)
+                {
+                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                     allowedMovement[instance.playerClientId] = true;
-                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
+                    return;
                 }
-                catch (System.Exception e)
+                if (Vector3.Distance(newPos, position) > maxDistancePerTick * 2)
                 {
-                    Log.LogError(e);
-                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
+                    Vector3 coalescePos = Vector3.MoveTowards(position, newPos, instance.movementSpeed * 5f / NetworkManager.Singleton.NetworkTickSystem.TickRate);
+                    if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 100f)
+                    {
+                        allowedMovement[instance.playerClientId] = false;
+                        return;
+                    }
+
+                    instance.UpdatePlayerPositionServerRpc(coalescePos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
+                    return;
                 }
+
+                allowedMovement[instance.playerClientId] = true;
+                instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
             }
 
             public void UpdatePlayerRotationServerRpc(short newRot, short newYRot, PlayerControllerB instance, ServerRpcParams _)
             {
-                try
+                if (allowedMovement.ContainsKey(instance.playerClientId) && !allowedMovement[instance.playerClientId])
                 {
-                    if (!allowedMovement[instance.playerClientId])
-                    {
-                        return;
-                    }
-                    instance.UpdatePlayerRotationServerRpc(newRot, newYRot);
+                    return;
                 }
-                catch
-                {
-                    instance.UpdatePlayerRotationServerRpc(newRot, newYRot);
-                }
+
+                instance.UpdatePlayerRotationServerRpc(newRot, newYRot);
             }
 
             public void UpdatePlayerRotationFullServerRpc(
@@ -1446,36 +1433,28 @@ namespace HostFixes
                 PlayerControllerB instance, 
                 ServerRpcParams _)
             {
-                try
+                if (allowedMovement.ContainsKey(instance.playerClientId) && !allowedMovement[instance.playerClientId])
                 {
-                    if (!allowedMovement[instance.playerClientId])
-                    {
-                        return;
-                    }
-                    instance.UpdatePlayerRotationFullServerRpc(playerEulers, cameraRotation, syncingCameraRotation);
+                    return;
                 }
-                catch
-                {
-                    instance.UpdatePlayerRotationFullServerRpc(playerEulers, cameraRotation, syncingCameraRotation);
-                }
+
+                instance.UpdatePlayerRotationFullServerRpc(playerEulers, cameraRotation, syncingCameraRotation);
             }
 
             public void UpdatePlayerAnimationServerRpc(int animationState, float animationSpeed, PlayerControllerB instance, ServerRpcParams _)
             {
-                try
+                if (allowedMovement.ContainsKey(instance.playerClientId) && !allowedMovement[instance.playerClientId])
                 {
-                    if (!allowedMovement[instance.playerClientId])
+                    for (int i = 0; i < instance.playerBodyAnimator.layerCount; i++)
                     {
-                        instance.UpdatePlayerAnimationServerRpc(-1437577361/*Standing Still Anim Hash*/, -1f);
-                        return;
+                        if (instance.playerBodyAnimator.HasState(i, -1437577361/*Standing Still Anim Hash*/)) return;
                     }
 
-                    instance.UpdatePlayerAnimationServerRpc(animationState, animationSpeed);
+                    instance.UpdatePlayerAnimationServerRpc(-1437577361/*Standing Still Anim Hash*/, -1f);
+                    return;
                 }
-                catch
-                {
-                    instance.UpdatePlayerAnimationServerRpc(animationState, animationSpeed);
-                }
+
+                instance.UpdatePlayerAnimationServerRpc(animationState, animationSpeed);
             }
 
             public void UpdateUsedByPlayerServerRpc(int playerNum, InteractTrigger instance, ServerRpcParams serverRpcParams)
