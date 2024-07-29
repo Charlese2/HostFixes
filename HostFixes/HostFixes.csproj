@@ -3,7 +3,7 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <AssemblyName>com.github.CharlesE2.$(MSBuildProjectName)</AssemblyName>
-        <Description>Fixes for hosting a Lethal Company Lobby.</Description>
+        <Description>Lethal Company server-side anticheat mod.</Description>
         <Version>1.0.18</Version>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
