@@ -891,6 +891,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (instance.OwnerClientId != senderClientId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) SteamId:({senderSteamId}) sent SendNewPlayerValuesServerRpc for the wrong player.");
+                    return;
+                }
+
                 if (senderSteamId != newPlayerSteamId)
                 {
                     Log.LogInfo($"Client sent incorrect steamId. Player's steamId: ({senderSteamId}) Sent steamId: ({newPlayerSteamId})");
