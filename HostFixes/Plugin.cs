@@ -18,7 +18,7 @@ using UnityEngine;
 
 namespace HostFixes
 {
-    [BepInPlugin("com.github.CharlesE2.HostFixes", PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
+    [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
     public class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log = null!;
@@ -113,7 +113,7 @@ namespace HostFixes
             configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5,
                 "Limit distance that someone can press the teleporter buttton from. 0 to disable.");
 
-            Harmony harmony = new(PluginInfo.PLUGIN_GUID);
+            Harmony harmony = new(MyPluginInfo.PLUGIN_GUID);
             harmony.PatchAll();
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
             SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
@@ -124,12 +124,12 @@ namespace HostFixes
             }
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             new HostFixesServerSendRpcs();
-            Log.LogMessage($"{PluginInfo.PLUGIN_NAME} v{PluginInfo.PLUGIN_VERSION} is loaded!");
+            Log.LogMessage($"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION} is loaded!");
         }
 
         private void LobbyCompatibility()
         {
-            PluginHelper.RegisterPlugin(PluginInfo.PLUGIN_GUID, System.Version.Parse(PluginInfo.PLUGIN_VERSION), CompatibilityLevel.ServerOnly, VersionStrictness.None);
+            PluginHelper.RegisterPlugin(MyPluginInfo.PLUGIN_GUID, System.Version.Parse(MyPluginInfo.PLUGIN_VERSION), CompatibilityLevel.ServerOnly, VersionStrictness.None);
         }
 
         private void UpdatePlayerPositionCache()
