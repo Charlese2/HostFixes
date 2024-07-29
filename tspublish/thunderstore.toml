@@ -1,0 +1,36 @@
+[config]
+schemaVersion = "0.0.1"
+
+[package]
+namespace = "CharlesE2"
+name = "HostFixes"
+#The tag you use to trigger the publish command will fill this in
+versionNumber = "1.0.0"
+description = "Fixes for hosting a Lethal Company Lobby."
+websiteUrl = "https://github.com/Charlese2/HostFixes"
+containsNsfwContent = false
+[package.dependencies]
+BepInEx-BepInExPack = "5.4.2100"
+
+
+[build]
+icon = "./icon.png"
+readme = "../README.md"
+outdir = "./build"
+
+[[build.copy]]
+source = "../HostFixes/bin/Debug/netstandard2.1/HostFixes.dll"
+target = "/plugins/HostFixes/"
+
+[[build.copy]]
+source = "../LICENSE"
+target = "/"
+
+[general]
+repository = "https://thunderstore.io"
+
+[publish]
+repository = "https://thunderstore.io"
+communities = ["lethal-company"]
+[publish.categories]
+lethal-company = ["mods", "misc", "serverside"]
