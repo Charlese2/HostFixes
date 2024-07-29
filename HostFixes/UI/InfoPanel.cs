@@ -53,7 +53,7 @@ namespace HostFixes.UI
 
         internal void Log_LogEvent(object sender, LogEventArgs logEvent)
         {
-            if (logEvent.Level is not LogLevel.Warning) return;
+            if (logEvent.Level is not LogLevel.Info) return;
 
             Log(logEvent.Data.ToString().Replace("\n", ""));
         }
