@@ -304,12 +304,28 @@ namespace HostFixes
                 if (instance.numberOfItemsInDropship + boughtItems.Length > 12)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy too many items.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        instance.groupCredits,
+                        instance.numberOfItemsInDropship,
+                        instance.hasWarrantyTicket,
+                        instance,
+                        clientRpcParams
+                    );
                     return;
                 }
 
                 if (newGroupCredits < 0)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried tried to set credits to a negative number while buying items.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        instance.groupCredits,
+                        instance.numberOfItemsInDropship,
+                        instance.hasWarrantyTicket,
+                        instance,
+                        clientRpcParams
+                    );
                     return;
                 }
 
@@ -319,6 +335,14 @@ namespace HostFixes
                     if (item < 0 || item >= instance.buyableItemsList.Length || item >= instance.itemSalesPercentages.Length)
                     {
                         Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy an item that was not in the host's shop. Item #{item}");
+                        ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                        HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                            instance.groupCredits,
+                            instance.numberOfItemsInDropship,
+                            instance.hasWarrantyTicket,
+                            instance,
+                            clientRpcParams
+                        );
                         return;
                     }
 
@@ -329,6 +353,14 @@ namespace HostFixes
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) credits spent on items does not match item price. " +
                         $"Spent credits: {instance.groupCredits - cost} Cost Of items: {cost}");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        instance.groupCredits,
+                        instance.numberOfItemsInDropship,
+                        instance.hasWarrantyTicket,
+                        instance,
+                        clientRpcParams
+                    );
                     return;
                 }
 
@@ -2142,6 +2174,18 @@ namespace HostFixes
                     bufferWriter.WriteValueSafe(in grabValidated);
                     bufferWriter.WriteValueSafe(in grabbedObject);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 2552479808u, clientRpcParams, RpcDelivery.Reliable]);
+                }
+            }
+
+            public void SyncTerminalValuesClientRpc(int groupCredits, int numItemsInDropship, bool vehicleWarranty, Terminal instance, ClientRpcParams clientRpcParams)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [1505747100u, clientRpcParams, RpcDelivery.Reliable]);
+                    BytePacker.WriteValueBitPacked(bufferWriter, groupCredits);
+                    BytePacker.WriteValueBitPacked(bufferWriter, numItemsInDropship);
+                    bufferWriter.WriteValueSafe(in vehicleWarranty);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 1505747100u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
