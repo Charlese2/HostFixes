@@ -3,7 +3,7 @@ name: Build
 on:
   push:
     branches:
-      - '**'
+      - '__disabled__'
 
 jobs:
   build:
