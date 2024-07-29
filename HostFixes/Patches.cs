@@ -142,17 +142,17 @@ namespace HostFixes
                 {
                     if (!SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value))
                     {
-                        Log.LogError($"steamId: ({info.identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
+                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
                     }
 
                     if (!ConnectionIdtoSteamIdMap.Remove(connection.Id))
                     {
-                        Log.LogError($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
+                        Log.LogWarning($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
                     }
 
                     if (!playerSteamNames.Remove(info.identity.SteamId.Value))
                     {
-                        Log.LogError($"steamId: ({info.identity.SteamId.Value}) was not in playerSteamNames.");
+                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in playerSteamNames.");
                     }
                 }
             }
@@ -170,7 +170,7 @@ namespace HostFixes
                     {
                         if (!SteamIdtoClientIdMap.Remove(steamId))
                         {
-                            Log.LogError($"({steamId}) was not in steamIdtoClientIdMap.");
+                            Log.LogWarning($"({steamId}) was not in steamIdtoClientIdMap.");
                         }
 
                         ClientIdToSteamIdMap.Remove(clientId);
