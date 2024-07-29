@@ -707,6 +707,12 @@ namespace HostFixes
                     return;
                 }
 
+                if (senderClientId == 0) 
+                {
+                    instance.PlaceShipObjectServerRpc(newPosition, newRotation, objectRef, playerWhoMoved);
+                    return;
+                }
+
                 if (placeableShipObject?.parentObject?.GetType() == typeof(ShipTeleporter) &&
                     placeableShipObject.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
                     teleporter.isInverseTeleporter &&
