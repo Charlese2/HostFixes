@@ -1721,7 +1721,14 @@ namespace HostFixes
                     return;
                 }
 
-                instance.SyncAlreadyHeldObjectsServerRpc(joiningClientId);
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                if ((ulong)joiningClientId != senderClientId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried spoofing SyncAlreadyHeldObjectsServerRpc on another player.");
+                    return;
+                }
+
+                instance.SyncAlreadyHeldObjectsServerRpc((int)senderClientId);
             }
 
             public void CheckAnimationGrabPlayerServerRpc(int monsterAnimationID, int playerID, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
