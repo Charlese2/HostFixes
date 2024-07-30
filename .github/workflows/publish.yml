@@ -2,7 +2,8 @@ name: Publish Mod To TS
 
 on:
     push:
-      tags: "*"
+      tags:
+        - '*'
 
 jobs:
   publish:
@@ -10,7 +11,8 @@ jobs:
     steps:
       # Use checkout to publish the files in your repo
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Setup Dotnet
         uses: actions/setup-dotnet@v4
         with:
