@@ -459,15 +459,33 @@ namespace HostFixes
                     return;
                 }
 
+                Terminal terminal = FindObjectOfType<Terminal>();
+
                 if (StartOfRound.Instance.allPlayerScripts[senderPlayerId].isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to change the moon while they are dead on the server.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        terminal.groupCredits,
+                        terminal.numberOfItemsInDropship,
+                        terminal.hasWarrantyTicket,
+                        terminal,
+                        clientRpcParams
+                    );
                     return;
                 }
 
                 if (newGroupCreditsAmount < 0)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to set credits to a negative number while changing levels.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        terminal.groupCredits,
+                        terminal.numberOfItemsInDropship,
+                        terminal.hasWarrantyTicket,
+                        terminal,
+                        clientRpcParams
+                    );
                     return;
                 }
 
@@ -476,8 +494,6 @@ namespace HostFixes
                     instance.ChangeLevelServerRpc(levelID, newGroupCreditsAmount);
                     return;
                 }
-
-                Terminal terminal = FindObjectOfType<Terminal>();
 
                 if (moons.Count == 0)
                 {
@@ -491,6 +507,14 @@ namespace HostFixes
                 if (!moons.ContainsKey(levelID))
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) sent levelID ({levelID}) that is not in the moons array.");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        terminal.groupCredits,
+                        terminal.numberOfItemsInDropship,
+                        terminal.hasWarrantyTicket,
+                        terminal,
+                        clientRpcParams
+                    );
                     return;
                 }
 
@@ -499,6 +523,14 @@ namespace HostFixes
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) calculated credit amount does not match sent credit amount for moon. " +
                         $"Spent credits: {terminal.groupCredits - newGroupCreditsAmount} Moon cost: {moonCost}");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                        terminal.groupCredits,
+                        terminal.numberOfItemsInDropship,
+                        terminal.hasWarrantyTicket,
+                        terminal,
+                        clientRpcParams
+                    );
                     return;
                 }
                 else
@@ -507,6 +539,14 @@ namespace HostFixes
                     {
                         Log.LogInfo($"Player #{senderPlayerId} ({username}) attempted to increase credits from changing levels. " +
                             $"Attempted Credit Value: {newGroupCreditsAmount} Old Credit Value: {terminal.groupCredits}");
+                        ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                        HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
+                            terminal.groupCredits,
+                            terminal.numberOfItemsInDropship,
+                            terminal.hasWarrantyTicket,
+                            terminal,
+                            clientRpcParams
+                        );
                         return;
                     }
                 }
