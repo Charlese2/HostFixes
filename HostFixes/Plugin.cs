@@ -1830,6 +1830,19 @@ namespace HostFixes
                     return;
                 }
 
+                if (senderClientId == 0)
+                {
+                    instance.ChangeEnemyOwnerServerRpc(clientId);
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (player.isPlayerDead)
+                {
+                    return;
+                }
+
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
