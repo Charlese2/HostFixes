@@ -248,7 +248,7 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton.IsHost && !playerSteamNames.TryAdd(member.Id.Value, member.Name))
                 {
-                    Log.LogError($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the playerSteamNames list.");
+                    Log.LogWarning($"SteamId: ({member.Id.Value}) Name: ({member.Name}) is already in the playerSteamNames list.");
                 }
             }
 
@@ -258,7 +258,7 @@ namespace HostFixes
                 {
                     if (!GameNetworkManager.Instance.steamIdsInLobby.Remove(member.Id.Value))
                     {
-                        Log.LogError($"({member.Id.Value}) already removed from steamIdsInLobby.");
+                        Log.LogWarning($"({member.Id.Value}) already removed from steamIdsInLobby.");
                     }
                 }
             }
@@ -267,7 +267,7 @@ namespace HostFixes
             {
                 if (result == Result.OK && !playerSteamNames.TryAdd(lobby.Owner.Id.Value, lobby.Owner.Name))
                 {
-                    Log.LogError($"Host is already in playerSteamNames.");
+                    Log.LogWarning($"Host is already in playerSteamNames.");
                 }
             }
         }
