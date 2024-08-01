@@ -2209,6 +2209,35 @@ namespace HostFixes
 
                 instance.SpringDriverSeatServerRpc();
             }
+
+            public void CreateMimicServerRpc(bool inFactory, Vector3 playerPositionAtDeath, HauntedMaskItem instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[CreateMimicServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (player.isPlayerDead == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to create mimic without dying.");
+                    return;
+                }
+                
+                if (instance.previousPlayerHeldBy != player)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to create mimic without holding mask.");
+                    return;
+                }
+
+                instance.NetworkObject.Despawn(true);
+
+                Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) created a Mimic.");
+                instance.CreateMimicServerRpc(inFactory, playerPositionAtDeath);
+            }
         }
 
         public class HostFixesServerSendRpcs : NetworkBehaviour
@@ -4300,6 +4329,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SpringDriverSeatServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class CreateMimicServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(HauntedMaskItem), "__rpc_handler_1065539967")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "CreateMimicServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.CreateMimicServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch CreateMimicServerRpc");
                     }
 
                     return codes.AsEnumerable();
