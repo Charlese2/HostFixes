@@ -1150,7 +1150,7 @@ namespace HostFixes
 
                 if (thrownObject is null)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
                     return;
                 }
 
@@ -1162,7 +1162,7 @@ namespace HostFixes
 
                 if (!thrownObject.TryGetComponent(out GrabbableObject _))
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
                     return;
                 }
 
@@ -1187,7 +1187,7 @@ namespace HostFixes
 
                 if (throwDistance > instance.grabDistance + 7)
                 {
-                    Log.LogWarning($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
                     instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, floorYRot);
                     return;
                 }
