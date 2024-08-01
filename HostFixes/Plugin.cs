@@ -1299,6 +1299,18 @@ namespace HostFixes
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
             }
 
+            public void SetTimesHeardNoiseServerRpc(float valueChange, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+
+                if (senderClientId != 0)
+                {
+                    return;
+                }
+
+                instance.SetTimesHeardNoiseServerRpc(valueChange * (StartOfRound.Instance.connectedPlayersAmount + 1));
+            }
+
             public void SetShipLightsServerRpc(bool setLightsOn, ShipLights instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -2945,6 +2957,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch AddObjectToDeskServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SetTimesHeardNoiseServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(DepositItemsDesk), "__rpc_handler_745684781")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SetTimesHeardNoiseServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SetTimesHeardNoiseServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SetTimesHeardNoiseServerRpc");
                     }
 
                     return codes.AsEnumerable();
