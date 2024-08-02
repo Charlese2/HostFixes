@@ -352,7 +352,7 @@ namespace HostFixes
                 if (instance.groupCredits - cost != newGroupCredits)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) credits spent on items does not match item price. " +
-                        $"Spent credits: {instance.groupCredits - cost} Cost Of items: {cost}");
+                        $"Spent credits: {instance.groupCredits - newGroupCredits} Cost Of items: {cost}");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
                         instance.groupCredits,
