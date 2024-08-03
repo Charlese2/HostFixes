@@ -354,7 +354,7 @@ namespace HostFixes
                 if (instance.groupCredits - cost != newGroupCredits)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) credits spent on items does not match item price. " +
-                        $"Spent credits: {instance.groupCredits - cost} Cost Of items: {cost}");
+                        $"Spent credits: {instance.groupCredits - newGroupCredits} Cost Of items: {cost}");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.SyncTerminalValuesClientRpc(
                         instance.groupCredits,
@@ -1154,7 +1154,7 @@ namespace HostFixes
 
                 if (thrownObject is null)
                 {
-                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
                     return;
                 }
 
@@ -1166,7 +1166,7 @@ namespace HostFixes
 
                 if (!thrownObject.TryGetComponent(out GrabbableObject _))
                 {
-                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that isn't a GrabbleObject. ({thrownObject.name})");
                     return;
                 }
 
@@ -1191,7 +1191,7 @@ namespace HostFixes
 
                 if (throwDistance > instance.grabDistance + 7)
                 {
-                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) threw an object to far away. ({throwDistance}) ({thrownObject.name})");
                     instance.ThrowObjectServerRpc(grabbedObject, instance.isInElevator, instance.isInHangarShipRoom, placeLocalPosition, floorYRot);
                     return;
                 }
