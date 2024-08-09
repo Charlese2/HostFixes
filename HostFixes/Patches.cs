@@ -72,7 +72,7 @@ namespace HostFixes
                 if (found)
                 {
                     codes.Insert(location + 1, Transpilers.EmitDelegate<Func<IEnumerable<PlaceableShipObject>, IEnumerable<PlaceableShipObject>>>(
-                        placeableShipObject => placeableShipObject.Where(
+                        placeableShipObjects => placeableShipObjects.Where(
                             placeableShipObject => placeableShipObject.parentObject != null)
                         )
                     );

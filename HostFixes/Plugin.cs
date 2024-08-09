@@ -401,7 +401,7 @@ namespace HostFixes
 
                 if (unlockableID < 0 || unlockableID > StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is out of unlockables list. ({unlockableID}).");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is not in the unlockables list. ({unlockableID}).");
                     return;
                 }
 
@@ -719,7 +719,7 @@ namespace HostFixes
 
                 GameObject gameObject = objectRef;
 
-                if (gameObject is null)
+                if (gameObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object that doesn't exist.");
                     return;
@@ -727,9 +727,10 @@ namespace HostFixes
 
                 PlaceableShipObject placeableShipObject = gameObject.GetComponentInChildren<PlaceableShipObject>();
 
-                if (placeableShipObject is null)
+                if (placeableShipObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object using an invalid object. ({gameObject.name})");
+                    return;
                 }
 
                 if (configShipObjectRotationCheck.Value)
@@ -757,7 +758,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (placeableShipObject?.parentObject?.GetType() == typeof(ShipTeleporter) &&
+                if (placeableShipObject != null && 
+                    placeableShipObject.parentObject != null && 
+                    placeableShipObject.parentObject.GetType() == typeof(ShipTeleporter) &&
                     placeableShipObject.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
                     teleporter.isInverseTeleporter &&
                     pressTeleportButtonOnCooldown.Contains(teleporter))
@@ -1106,7 +1109,7 @@ namespace HostFixes
                 }
 
                 float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
-                bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
+                bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() == null;
 
                 if (instance.isInHangarShipRoom && grabbedGameObject.TryGetComponent(out GrabbableObject grabbableObject) == true && grabbableObject.isInShipRoom)
                 {
@@ -1152,7 +1155,7 @@ namespace HostFixes
 
                 GameObject thrownObject = grabbedObject;
 
-                if (thrownObject is null)
+                if (thrownObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
                     return;
@@ -1238,19 +1241,30 @@ namespace HostFixes
                     return;
                 }
 
+                if (grabbedItem.TryGetComponent(out GrabbableObject grabbableObject) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object that isn't a grabbable object ({grabbedItem.name})");
+                    return;
+                }
                 float placeDistance = Vector3.Distance(instance.transform.position, itemParent.transform.position);
 
                 if (placeDistance > instance.grabDistance + 7)
                 {
+                    Vector3 placePosition = grabbableObject.GetItemFloorPosition();
                     Vector3 placeLocalPosition;
+
+                    if (placePosition == instance.transform.position)
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object too far away and it didn't fall. {grabbableObject.name} {placePosition}");
+                    }
 
                     if (instance.isInElevator)
                     {
-                        placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(grabbedItem.transform.position);
+                        placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(placePosition);
                     }
                     else
                     {
-                        placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
+                        placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(placePosition);
                     }
 
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object to far away. ({placeDistance})");
@@ -1285,9 +1299,9 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 string username = player.playerUsername;
-                GameObject grabbableObject = grabbableObjectNetObject;
+                GameObject grabbableGameObject = grabbableObjectNetObject;
 
-                if (grabbableObject is null)
+                if (grabbableGameObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a grabbable object that doesn't exist. ({grabbableObjectNetObject.NetworkObjectId})");
                     return;
@@ -1296,10 +1310,23 @@ namespace HostFixes
                 float deskDistance = Vector3.Distance(player.transform.position, instance.deskObjectsContainer.transform.position);
                 if (deskDistance > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) " +
-                        $"{grabbableObject.GetComponent<GrabbableObject>()?.name}");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to put item on desk too far away. ({deskDistance}) " +
+                        $"{grabbableGameObject.GetComponent<GrabbableObject>()?.name}");
                     return;
                 }
+
+                if (grabbableGameObject.TryGetComponent(out GrabbableObject grabbableObject) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add an object to the desk that isn't a grabbable object ({grabbableGameObject.name})");
+                    return;
+                }
+
+                if (grabbableObject.isHeld && grabbableObject.playerHeldBy != player)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add an object to the desk held by someone else. ({grabbableObject.name})");
+                    return;
+                }
+
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
             }
 
@@ -1635,14 +1662,14 @@ namespace HostFixes
                 if (playerWhoTriggered != senderPlayerId)
                 {
                     Log.LogInfo($"[UpdateAnimServerRpc] " +
-                        $"playerWhoTriggered ({playerWhoTriggered}) != senderPlayerId ({senderPlayerId}) ({instance.triggerAnimator.name})");
+                        $"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof updating an animator from another player. ({instance.triggerAnimator?.name}) (#{playerWhoTriggered}) ");
                     return;
                 }
 
                 if (player.isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                        $"tried to interact with an animated object ({instance.triggerAnimator.name}) while they are dead on the server.");
+                        $"tried to interact with an animated object ({instance.triggerAnimator?.name}) while they are dead on the server.");
                     return;
                 }
 
@@ -1654,7 +1681,7 @@ namespace HostFixes
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[senderPlayerId].transform.position);
                 if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away" +
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator?.name}) from too far away" +
                         $" ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
@@ -1862,7 +1889,7 @@ namespace HostFixes
 
                 if (itemOnCooldown.Contains(instance.NetworkObjectId)) return;
 
-                if (instance.playerHeldBy is null)
+                if (instance.playerHeldBy == null)
                 {
                     PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried activate an item that is not held by anyone.");
