@@ -1237,19 +1237,30 @@ namespace HostFixes
                     return;
                 }
 
+                if (grabbedItem.TryGetComponent(out GrabbableObject grabbableObject) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object that isn't a grabbable object ({grabbedItem.name})");
+                    return;
+                }
                 float placeDistance = Vector3.Distance(instance.transform.position, itemParent.transform.position);
 
                 if (placeDistance > instance.grabDistance + 7)
                 {
+                    Vector3 placePosition = grabbableObject.GetItemFloorPosition();
                     Vector3 placeLocalPosition;
+
+                    if (placePosition == instance.transform.position)
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object too far away and it didn't fall. {grabbableObject.name} {placePosition}");
+                    }
 
                     if (instance.isInElevator)
                     {
-                        placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(grabbedItem.transform.position);
+                        placeLocalPosition = instance.playersManager.elevatorTransform.InverseTransformPoint(placePosition);
                     }
                     else
                     {
-                        placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(grabbedItem.transform.position);
+                        placeLocalPosition = instance.playersManager.propsContainer.InverseTransformPoint(placePosition);
                     }
 
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place an object to far away. ({placeDistance})");
