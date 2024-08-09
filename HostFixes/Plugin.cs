@@ -1295,9 +1295,9 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                 string username = player.playerUsername;
-                GameObject grabbableObject = grabbableObjectNetObject;
+                GameObject grabbableGameObject = grabbableObjectNetObject;
 
-                if (grabbableObject == null)
+                if (grabbableGameObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a grabbable object that doesn't exist. ({grabbableObjectNetObject.NetworkObjectId})");
                     return;
@@ -1306,10 +1306,23 @@ namespace HostFixes
                 float deskDistance = Vector3.Distance(player.transform.position, instance.deskObjectsContainer.transform.position);
                 if (deskDistance > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({username}) put item on desk too far away. ({deskDistance}) " +
-                        $"{grabbableObject.GetComponent<GrabbableObject>()?.name}");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to put item on desk too far away. ({deskDistance}) " +
+                        $"{grabbableGameObject.GetComponent<GrabbableObject>()?.name}");
                     return;
                 }
+
+                if (grabbableGameObject.TryGetComponent(out GrabbableObject grabbableObject) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add an object to the desk that isn't a grabbable object ({grabbableGameObject.name})");
+                    return;
+                }
+
+                if (grabbableObject.isHeld && grabbableObject.playerHeldBy != player)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add an object to the desk held by someone else. ({grabbableObject.name})");
+                    return;
+                }
+
                 instance.AddObjectToDeskServerRpc(grabbableObjectNetObject);
             }
 
