@@ -715,7 +715,7 @@ namespace HostFixes
 
                 GameObject gameObject = objectRef;
 
-                if (gameObject is null)
+                if (gameObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object that doesn't exist.");
                     return;
@@ -723,7 +723,7 @@ namespace HostFixes
 
                 PlaceableShipObject placeableShipObject = gameObject.GetComponentInChildren<PlaceableShipObject>();
 
-                if (placeableShipObject is null)
+                if (placeableShipObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object using an invalid object. ({gameObject.name})");
                 }
@@ -753,7 +753,9 @@ namespace HostFixes
                     return;
                 }
 
-                if (placeableShipObject?.parentObject?.GetType() == typeof(ShipTeleporter) &&
+                if (placeableShipObject != null && 
+                    placeableShipObject.parentObject != null && 
+                    placeableShipObject.parentObject.GetType() == typeof(ShipTeleporter) &&
                     placeableShipObject.parentObject.TryGetComponent(out ShipTeleporter teleporter) &&
                     teleporter.isInverseTeleporter &&
                     pressTeleportButtonOnCooldown.Contains(teleporter))
@@ -1102,7 +1104,7 @@ namespace HostFixes
                 }
 
                 float distanceToObject = Vector3.Distance(grabbedGameObject.transform.position, sendingPlayer.transform.position);
-                bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() is null;
+                bool isNotBody = grabbedGameObject.GetComponent<RagdollGrabbableObject>() == null;
 
                 if (instance.isInHangarShipRoom && grabbedGameObject.TryGetComponent(out GrabbableObject grabbableObject) == true && grabbableObject.isInShipRoom)
                 {
@@ -1148,7 +1150,7 @@ namespace HostFixes
 
                 GameObject thrownObject = grabbedObject;
 
-                if (thrownObject is null)
+                if (thrownObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to throw an object that doesn't exist. ({grabbedObject.m_NetworkObjectId})");
                     return;
@@ -1283,7 +1285,7 @@ namespace HostFixes
                 string username = player.playerUsername;
                 GameObject grabbableObject = grabbableObjectNetObject;
 
-                if (grabbableObject is null)
+                if (grabbableObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a grabbable object that doesn't exist. ({grabbableObjectNetObject.NetworkObjectId})");
                     return;
@@ -1857,7 +1859,7 @@ namespace HostFixes
 
                 if (itemOnCooldown.Contains(instance.NetworkObjectId)) return;
 
-                if (instance.playerHeldBy is null)
+                if (instance.playerHeldBy == null)
                 {
                     PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried activate an item that is not held by anyone.");
