@@ -399,7 +399,7 @@ namespace HostFixes
 
                 if (unlockableID < 0 || unlockableID > StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is out of unlockables list. ({unlockableID}).");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is not in the unlockables list. ({unlockableID}).");
                     return;
                 }
 
@@ -1633,14 +1633,14 @@ namespace HostFixes
                 if (playerWhoTriggered != senderPlayerId)
                 {
                     Log.LogInfo($"[UpdateAnimServerRpc] " +
-                        $"playerWhoTriggered ({playerWhoTriggered}) != senderPlayerId ({senderPlayerId}) ({instance.triggerAnimator.name})");
+                        $"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof updating an animator from another player. ({instance.triggerAnimator?.name}) (#{playerWhoTriggered}) ");
                     return;
                 }
 
                 if (player.isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                        $"tried to interact with an animated object ({instance.triggerAnimator.name}) while they are dead on the server.");
+                        $"tried to interact with an animated object ({instance.triggerAnimator?.name}) while they are dead on the server.");
                     return;
                 }
 
@@ -1652,7 +1652,7 @@ namespace HostFixes
                 float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[senderPlayerId].transform.position);
                 if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator.name}) from too far away" +
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator?.name}) from too far away" +
                         $" ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
