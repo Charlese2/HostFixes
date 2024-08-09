@@ -726,6 +726,7 @@ namespace HostFixes
                 if (placeableShipObject == null)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to move a ship object using an invalid object. ({gameObject.name})");
+                    return;
                 }
 
                 if (configShipObjectRotationCheck.Value)
