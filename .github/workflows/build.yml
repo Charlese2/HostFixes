@@ -30,4 +30,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: "./HostFixes/bin/Release/netstandard2.1/com.github.CharlesE2.HostFixes.dll"
+          path: "./HostFixes/bin/Release/HostFixes.dll"
