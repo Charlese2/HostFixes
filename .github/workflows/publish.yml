@@ -1,9 +1,9 @@
 name: Publish Mod To TS
 
 on:
-    push:
-      tags:
-        - '*'
+  push:
+    tags:
+      - '*'
 
 jobs:
   publish:
@@ -17,22 +17,18 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.x"
+          cache: true
+          cache-dependency-path: '**/packages.lock.json'
 
       - name: Restore and Build
         run: |
-          dotnet restore
+          dotnet restore --locked-mode
           dotnet tool restore
           dotnet build
 
       - name: Publish to TS
         env:
-          # go to settings/secrets/actions -> add new repository secret name it
-          # TCLI_AUTH_TOKEN and put a service worker token for your CharlesE2
-          # in it. WARNING: Service workers only show up ONCE and are encrypted
-          # by github after input so you can never recover it from the TS or GH
-          # if you ever need it again. Save the token if you plan to use it on
-          # other repositories but treat it like a password, it can be used to
-          # publish to your Thunderstore Namespace
           TCLI_AUTH_TOKEN: ${{ secrets.TCLI_AUTH_TOKEN }}
+          PACKAGE_VERSION: ${{ github.ref_name }}
         run: |
-          dotnet tcli publish --config-path "./tspublish/thunderstore.toml" --package-version ${{ github.ref_name }}
+          dotnet publish -c Release
