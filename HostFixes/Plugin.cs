@@ -397,7 +397,7 @@ namespace HostFixes
 
                 string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
 
-                if (unlockableID < 0 || unlockableID > StartOfRound.Instance.unlockablesList.unlockables.Count)
+                if (unlockableID < 0 || unlockableID >= StartOfRound.Instance.unlockablesList.unlockables.Count)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to buy unlockable that is not in the unlockables list. ({unlockableID}).");
                     return;
@@ -580,7 +580,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Length)
+                if (playerId < 0 || playerId >= StartOfRound.Instance.allPlayerScripts.Length)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to chat with a playerId ({playerId}) that is not a valid player. " +
                         $"Message: ({chatMessage})");

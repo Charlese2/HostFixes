@@ -245,7 +245,7 @@ namespace HostFixes
 
                 if (!networkManager.IsHost)
                 {
-                    if (playerId < 0 || playerId > StartOfRound.Instance.allPlayerScripts.Length)
+                    if (playerId < 0 || playerId >= StartOfRound.Instance.allPlayerScripts.Length)
                     {
                         return false;
                     }
