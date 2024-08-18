@@ -1,5 +1,4 @@
 ﻿using BepInEx.Logging;
-using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,10 +7,12 @@ namespace HostFixes.UI
 {
     internal class InfoPanel
     {
-        public static GameObject GameObjectInstance;
-        public static InfoPanel Instance;
-        private Text MyText;
-        private Queue logQueue = new(10);
+        public static GameObject GameObjectInstance = null!;
+        public static InfoPanel Instance = null!;
+        private readonly Text MyText = null!;
+        private readonly Queue logQueue = new(10);
+        private string? LastLogMessage;
+        private int TimesRepeated = 1;
         public InfoPanel()
         {
             Instance = this;
@@ -51,22 +52,39 @@ namespace HostFixes.UI
             Plugin.Log.LogEvent += Log_LogEvent;
         }
 
+        ~InfoPanel()
+        {
+            Plugin.Log.LogInfo("InfoPanel Destroy");
+        }
+
         internal void Log_LogEvent(object sender, LogEventArgs logEvent)
         {
-            if (logEvent.Level is not LogLevel.Info) return;
+            //if (logEvent.Level is not LogLevel.Info) return;
 
             Log(logEvent.Data.ToString().Replace("\n", ""));
         }
 
-        public void Log(object data)
+        public void Log(string data)
         {
-            if (logQueue.Count == 10)
+            if (LastLogMessage == data)
             {
-                logQueue.Dequeue();
+                TimesRepeated++;
             }
-            logQueue.Enqueue(data.ToString());
+            else 
+            {
+                if (LastLogMessage != null)
+                {
+                    if (logQueue.Count == 9)
+                    {
+                        logQueue.Dequeue();
+                    }
+                    logQueue.Enqueue($"{LastLogMessage}{(TimesRepeated > 1 ? $" x{TimesRepeated}" : $"")}");
+                    TimesRepeated = 1;
+                }
+                LastLogMessage = data;
+            }
 
-            if (MyText is null)
+            if (MyText == null)
             {
                 Plugin.Log.LogError("MyText is null. Can't add to GUI log.");
                 return;
@@ -76,6 +94,10 @@ namespace HostFixes.UI
             foreach (string log in logQueue)
             {
                 MyText.text += $"{log}\n";
+            }
+            if (LastLogMessage != null)
+            {
+                MyText.text += $"{LastLogMessage}{(TimesRepeated > 1 ? $" x{TimesRepeated}" : $"")}";
             }
         }
     }
