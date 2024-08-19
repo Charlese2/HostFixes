@@ -27,6 +27,7 @@
 
 # Visual Studio cache directory
 .vs/
+!.vs/tasks.vs.json
 
 # Gradle cache directory
 .gradle/
@@ -70,3 +71,5 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
+artifacts/*/dist/**/*
+artifacts/**/*.zip
