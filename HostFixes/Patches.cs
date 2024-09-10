@@ -107,20 +107,9 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton?.IsListening == true)
                 {
-                    if (!SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value))
-                    {
-                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
-                    }
-
-                    if (!ConnectionIdtoSteamIdMap.Remove(connection.Id))
-                    {
-                        Log.LogWarning($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
-                    }
-
-                    if (!playerSteamNames.Remove(info.identity.SteamId.Value))
-                    {
-                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in playerSteamNames.");
-                    }
+                    SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value);
+                    ConnectionIdtoSteamIdMap.Remove(connection.Id);
+                    playerSteamNames.Remove(info.identity.SteamId.Value);
                 }
             }
         }
@@ -135,11 +124,7 @@ namespace HostFixes
                 {
                     if (ClientIdToSteamIdMap.TryGetValue(clientId, out ulong steamId))
                     {
-                        if (!SteamIdtoClientIdMap.Remove(steamId))
-                        {
-                            Log.LogWarning($"({steamId}) was not in steamIdtoClientIdMap.");
-                        }
-
+                        SteamIdtoClientIdMap.Remove(steamId);
                         ClientIdToSteamIdMap.Remove(clientId);
                     }
                 }
@@ -167,8 +152,8 @@ namespace HostFixes
         class MapSteamIdToClientId
         {
             public static void Postfix(
-                GameNetworkManager __instance, 
-                ref NetworkManager.ConnectionApprovalRequest request, 
+                GameNetworkManager __instance,
+                ref NetworkManager.ConnectionApprovalRequest request,
                 ref NetworkManager.ConnectionApprovalResponse response)
             {
                 if (!__instance.disableSteam)
