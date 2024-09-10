@@ -167,7 +167,10 @@ namespace HostFixes
 
                         if (StartOfRound.Instance?.KickedClientIds.Contains(steamId) == true)
                         {
-                            response.Reason = "You cannot rejoin after being kicked.";
+                            if (response.Reason == "")
+                            {
+                                response.Reason = "You cannot rejoin after being kicked.";
+                            }
                             response.Approved = false;
                         }
                     }
