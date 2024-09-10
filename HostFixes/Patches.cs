@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 using static HostFixes.Plugin;
@@ -172,6 +173,12 @@ namespace HostFixes
                                 response.Reason = "You cannot rejoin after being kicked.";
                             }
                             response.Approved = false;
+                        }
+
+                        string[] payload = Encoding.ASCII.GetString(request.Payload).Split(",");
+                        if (payload.Length >= 2 && payload[1] != steamId.ToString())
+                        {
+                            Log.LogInfo($"SteamID sent by client ({payload[1]}) doesn't match SteamID from steam ({steamId}).");
                         }
                     }
                     else
