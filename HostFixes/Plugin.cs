@@ -55,6 +55,9 @@ namespace HostFixes
         private static Dictionary<int, bool> shipLeverAnimationOnCooldown = [];
         private static Dictionary<int, bool> changeLevelCooldown = [];
         private static List<ulong> itemOnCooldown = [];
+        private static List<ulong> knifeSoundCooldown = [];
+        private static List<PlayerControllerB> serverSoundCooldown = [];
+        private static List<PlayerControllerB> playAudio1AtPositionCooldown = [];
         private static bool shipLightsOnCooldown;
         private static bool buyShipUnlockableOnCooldown;
         private static HashSet<ShipTeleporter> pressTeleportButtonOnCooldown = [];
@@ -209,6 +212,19 @@ namespace HostFixes
             yield return new WaitForSeconds(1f);
             itemOnCooldown.Remove(itemNetworkId);
         }
+        private static IEnumerator KnifeSoundCooldown(ulong itemNetworkId)
+        {
+            knifeSoundCooldown.Add(itemNetworkId);
+            yield return new WaitForSeconds(0.43f);
+            knifeSoundCooldown.Remove(itemNetworkId);
+        }
+
+        private static IEnumerator ServerAudioCooldown(PlayerControllerB player)
+        {
+            serverSoundCooldown.Add(player);
+            yield return new WaitForSeconds(0.25f);
+            serverSoundCooldown.Remove(player);
+        }
 
         private static IEnumerator DamageOtherPlayerCooldown(int sendingPlayer)
         {
@@ -243,6 +259,13 @@ namespace HostFixes
             changeLevelCooldown[sendingPlayer] = true;
             yield return new WaitForSeconds(0.25f);
             changeLevelCooldown[sendingPlayer] = false;
+        }
+
+        private static IEnumerator PlayAudio1AtPositionCooldown(PlayerControllerB sendingPlayer)
+        {
+            playAudio1AtPositionCooldown.Add(sendingPlayer);
+            yield return new WaitForSeconds(10f);
+            playAudio1AtPositionCooldown.Remove(sendingPlayer);
         }
 
         internal class ConnectionEvents
@@ -1902,6 +1925,18 @@ namespace HostFixes
                 instance.ActivateItemServerRpc(onOff, buttonDown);
             }
 
+            public void HitShovelServerRpc(int hitSurfaceID, KnifeItem instance, ServerRpcParams _)
+            {
+                if (knifeSoundCooldown.Contains(instance.NetworkObjectId))
+                {
+                    return;
+                }
+
+                Instance.StartCoroutine(KnifeSoundCooldown(instance.NetworkObjectId));
+
+                instance.HitShovelServerRpc(hitSurfaceID);
+            }
+
             public void SetMagnetOnServerRpc(bool on, StartOfRound instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
@@ -2285,6 +2320,83 @@ namespace HostFixes
                 Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) created a Mimic.");
                 instance.CreateMimicServerRpc(inFactory, playerPositionAtDeath);
             }
+            public void PlayAudioServerRpc(ServerAudio serverAudio, GlobalEffects instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[PlayAudioServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                GameObject audioObject = serverAudio.audioObj;
+
+                Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) played GlobalEffect. {serverAudio}");
+
+                if (serverSoundCooldown.Contains(player))
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to play global audio on cooldown. {serverAudio}");
+                    return;
+                }
+
+                if (audioObject == null)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) serverAudio object was null. ({serverAudio.audioObj.NetworkObjectId})");
+                    return;
+                }
+
+                if (audioObject != player.gameObject)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) played an global audio effect on another object. {audioObject.name}");
+                    return;
+                }
+
+                if (Vector3.Distance(player.transform.position, audioObject.transform.position) > 10f)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) played a global audio effect from to far from them.");
+                    return;
+                }
+
+                Instance.StartCoroutine(ServerAudioCooldown(player));
+
+                instance.PlayAudioServerRpc(serverAudio);
+            }
+
+            public void PlayAudio1AtPositionServerRpc(Vector3 audioPos, int clipIndex, SoundManager instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[PlayAudio1AtPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (playAudio1AtPositionCooldown.Contains(player))
+                {
+                    return;
+                }
+
+                if (player.isPlayerDead)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to play interact trigger sound while dead on the server.");
+                    return;
+                }
+
+                float soundDistance = Vector3.Distance(player.transform.position, audioPos);
+                if (soundDistance > 10f)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to play interact trigger sound from too far away. ({soundDistance})");
+                    return;
+                }
+
+                Instance.StartCoroutine(PlayAudio1AtPositionCooldown(player));
+                instance.PlayAudio1AtPositionServerRpc(audioPos, clipIndex);
+            }
+
         }
 
         public class HostFixesServerSendRpcs : NetworkBehaviour
@@ -3823,6 +3935,41 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
+            class HitShovelServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(KnifeItem), "__rpc_handler_2696735117")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "HitShovelServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.HitShovelServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch HitShovelServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
             class SetMagnetOnServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(StartOfRound), "__rpc_handler_3212216718")]
@@ -4411,6 +4558,76 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch CreateMimicServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PlayAudioServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(GlobalEffects), "__rpc_handler_1842858504")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayAudioServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayAudioServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayAudioServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PlayAudio1AtPositionServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(SoundManager), "__rpc_handler_2837950577")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayAudio1AtPositionServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayAudio1AtPositionServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayAudio1AtPositionServerRpc");
                     }
 
                     return codes.AsEnumerable();
