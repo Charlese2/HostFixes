@@ -283,8 +283,8 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), "OpenShipDoors")]
-        class OpenShipDoors_Patch
+        [HarmonyPatch(typeof(StartOfRound), "ShipLeave")]
+        class ShipLeave_Patch
         {
             public static void Prefix()
             {
