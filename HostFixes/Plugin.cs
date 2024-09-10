@@ -38,6 +38,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configLogSignalTranslatorMessages = null!;
         public static ConfigEntry<bool> configLogPvp = null!;
         public static ConfigEntry<bool> configLogShipObjects = null!;
+        public static ConfigEntry<bool> configLogVehicle = null!;
         public static ConfigEntry<bool> configCheckPrices = null!;
         public static ConfigEntry<bool> configExperimentalChanges = null!;
         public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
@@ -98,6 +99,8 @@ namespace HostFixes
                 "Log when a player damages another player.");
             configLogShipObjects = Config.Bind("Logging", "Log movement of ship furniture.", false,
                 "Log when a player moves ship unlockables.");
+            configLogVehicle = Config.Bind("Logging", "Log vehicle interactions.", false,
+                "Log when a player interacts with a vehicle.");
             configCheckPrices = Config.Bind("General", "Check prices", false,
                 "Check if the price on the terminal matches what is sent by the client.");
             configExperimentalChanges = Config.Bind("Experimental", "Experimental Changes.", false,
@@ -2131,6 +2134,18 @@ namespace HostFixes
                     return;
                 }
 
+                float vehicleDistance = Vector3.Distance(player.transform.position, instance.transform.position);
+                if (vehicleDistance > 10f)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to shift vehicle gear from too far away. ({vehicleDistance})");
+                    return;
+                }
+
+                if (configLogVehicle.Value && instance.currentDriver != null && instance.currentDriver != player)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) changed vehicle gear while not the driver. Gear: {(CarGearShift)setGear}");
+                }
+
                 instance.ShiftToGearServerRpc(setGear, senderPlayerId);
             }
 
@@ -2232,6 +2247,11 @@ namespace HostFixes
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to eject driver out of vehicle from too far away. ({vehicleDistance})");
                     return;
+                }
+
+                if (configLogVehicle.Value && instance.currentDriver != null && instance.currentDriver != player)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) ejected the driver out of the vehicle.");
                 }
 
                 instance.SpringDriverSeatServerRpc();
