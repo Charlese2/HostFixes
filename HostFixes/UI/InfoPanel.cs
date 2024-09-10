@@ -38,7 +38,7 @@ namespace HostFixes.UI
 
 
             MyText = GameObjectInstance.AddComponent<Text>();
-            if (MyText is not null)
+            if (MyText != null)
             {
                 MyText.font = font;
                 MyText.fontSize = 7;
@@ -48,13 +48,9 @@ namespace HostFixes.UI
             else
             {
                 Plugin.Log.LogError("MyText is null");
+                return;
             }
             Plugin.Log.LogEvent += Log_LogEvent;
-        }
-
-        ~InfoPanel()
-        {
-            Plugin.Log.LogInfo("InfoPanel Destroy");
         }
 
         internal void Log_LogEvent(object sender, LogEventArgs logEvent)
