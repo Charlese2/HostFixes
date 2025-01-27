@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <AssemblyName>com.github.CharlesE2.$(MSBuildProjectName)</AssemblyName>
         <Description>Lethal Company server-side anticheat mod.</Description>
-        <Version>1.0.18</Version>
+        <Version>1.0.19</Version>
         <LangVersion>latest</LangVersion>
         <Product>Host Fixes</Product>
         <Authors>CharlesE2</Authors>
@@ -48,6 +48,7 @@
         <PackageReference Include="TeamBMX.LobbyCompatibility" Version="1.*" PrivateAssets="all" />
         <PackageReference Include="UnityEngine.Modules" Version="2022.3.9" PrivateAssets="all" />
         <PackageReference Include="LethalCompany.GameLibs.Steam" Version="*-*" Publicize="true" PrivateAssets="all" />
+        <Reference Include="E:\Projects\Lethal-Admin\LethalAdmin\bin\Release\netstandard2.1\LethalAdmin.dll" Private="false" />
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
