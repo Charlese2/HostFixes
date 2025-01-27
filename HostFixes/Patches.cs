@@ -46,7 +46,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError("Could not patch SyncShipUnlockablesServerRpc's Crash");
+                    Log.LogWarning("Could not patch SyncShipUnlockablesServerRpc's Crash");
                 }
 
                 return codes.AsEnumerable();
@@ -82,7 +82,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError("Could not patch SyncAlreadyHeldObjectsClientRpc");
+                    Log.LogWarning("Could not patch SyncAlreadyHeldObjectsClientRpc");
                 }
 
                 return codes.AsEnumerable();
