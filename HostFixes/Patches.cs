@@ -53,6 +53,29 @@ namespace HostFixes
             }
         }
 
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.SyncAlreadyHeldObjectsServerRpc))]
+        internal static class SyncAlreadyHeldObjects_NullRef
+        {
+            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            {
+                CodeMatcher matcher = new CodeMatcher(instructions)
+                    .MatchForward(false,
+                    new CodeMatch(OpCodes.Ldfld, AccessTools.Field(typeof(GrabbableObject), "isHeld"))
+                    );
+
+                if (!matcher.ReportFailure(MethodBase.GetCurrentMethod(), Log.LogWarning))
+                {
+                    matcher.SetOperandAndAdvance(AccessTools.Field(typeof(GrabbableObject), "playerHeldBy"));
+                    matcher.InsertAndAdvance(
+                        new CodeInstruction(OpCodes.Ldnull),
+                        new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(UnityEngine.Object), "op_Inequality"))
+                    );
+                }
+
+                return matcher.InstructionEnumeration();
+            }
+        }
+
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.SyncAlreadyHeldObjectsClientRpc))]
         internal static class SyncAlreadyHeldObjectsToCallingClient
         {
