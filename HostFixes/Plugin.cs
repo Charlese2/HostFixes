@@ -5966,6 +5966,41 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
+            class CloseDoorNonPlayerServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(DoorLock), "__rpc_handler_2211684126")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "CloseDoorNonPlayerServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.CloseDoorNonPlayerServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch CloseDoorNonPlayerServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
             class EnterBerserkModeServerRpc_Transpile
             {
                 [HarmonyPatch(typeof(Turret), "__rpc_handler_4195711963")]
@@ -6169,6 +6204,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch PlayAudio1AtPositionServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PlayAmbienceClipServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(SoundManager), "__rpc_handler_274078295")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PlayAmbienceClipServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PlayAmbienceClipServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PlayAmbienceClipServerRpc");
                     }
 
                     return codes.AsEnumerable();
