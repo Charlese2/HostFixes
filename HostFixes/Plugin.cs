@@ -44,6 +44,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
         public static ConfigEntry<bool> configShipObjectRotationCheck = null!;
         public static ConfigEntry<bool> configLimitGrabDistance = null!;
+        public static ConfigEntry<bool> configLimitBeltBagToNonScrap = null!;
         public static ConfigEntry<int> configLimitShipLeverDistance = null!;
         public static ConfigEntry<int> configLimitTeleporterButtonDistance = null!;
 
@@ -108,6 +109,8 @@ namespace HostFixes
                 "Only allow ship objects to be placed if the they are still upright.");
             configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false,
                 "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
+            configLimitBeltBagToNonScrap = Config.Bind("General", "Limit Belt bag to non scrap", false, 
+                "Prevent any scrap from being picked up using the belt bag");
             configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5,
                 "Limit distance that someone can pull the ship lever from. 0 to disable.");
             configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5,
@@ -3116,7 +3119,7 @@ namespace HostFixes
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
-                    Log.LogError($"[PullCordServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    Log.LogError($"[StopPullingCordServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -3129,6 +3132,232 @@ namespace HostFixes
                 }
 
                 instance.StopPullingCordServerRpc(playerPullingCord);
+            }
+
+            public void RemoveFromBagNonElevatorParentServerRpc(
+                NetworkObjectReference objectRef,
+                NetworkObjectReference nonElevatorParent,
+                Vector3 targetPosition,
+                int playerWhoRemoved,
+                bool inFactory,
+                BeltBagItem instance,
+                ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[RemoveFromBagNonElevatorParentServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                string username = player.playerUsername;
+
+                if (playerWhoRemoved != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to spoof removing item from belt bag as another player. ({playerWhoRemoved})");
+                    return;
+                }
+
+                GameObject itemParent = nonElevatorParent;
+
+                if (itemParent == null)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a parent object that doesn't exist ({nonElevatorParent.NetworkObjectId})");
+                    return;
+                }
+
+                GameObject removedFromBagItem = objectRef;
+
+                if (removedFromBagItem == null)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a dropped from belt bag item that doesn't exist ({objectRef.NetworkObjectId})");
+                    return;
+                }
+
+                if (removedFromBagItem.TryGetComponent(out GrabbableObject droppedItem) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag that isn't a grabbable object ({removedFromBagItem.name})");
+                    return;
+                }
+
+                float dropDistance = Vector3.Distance(player.transform.position, itemParent.transform.position);
+
+                Vector3 dropPosition = droppedItem.GetItemFloorPosition();
+                Vector3 dropLocalPosition;
+
+                if (player.isInElevator)
+                {
+                    dropLocalPosition = player.playersManager.elevatorTransform.InverseTransformPoint(dropPosition);
+                }
+                else
+                {
+                    dropLocalPosition = player.playersManager.propsContainer.InverseTransformPoint(dropPosition);
+                }
+
+                if (dropDistance > player.grabDistance + 7)
+                {
+                    if (dropPosition == player.transform.position)
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag too far away and it didn't fall. {droppedItem.name} {dropPosition}");
+                    }
+
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag too far away. ({(int)dropDistance}) ({droppedItem.name})");
+                    player.ThrowObjectServerRpc(
+                        objectRef,
+                        player.isInElevator,
+                        player.isInHangarShipRoom,
+                        dropLocalPosition,
+                        (int)player.transform.localEulerAngles.y
+                    );
+                    return;
+                }
+
+                instance.RemoveFromBagNonElevatorParentServerRpc(objectRef, nonElevatorParent, targetPosition, senderPlayerId, inFactory);
+            }
+
+            public void RemoveFromBagServerRpc(
+                NetworkObjectReference objectRef,
+                bool setInElevator,
+                bool setInShip,
+                Vector3 targetPosition,
+                int playerWhoRemoved,
+                bool inFactory,
+                BeltBagItem instance,
+                ServerRpcParams serverRpcParams)
+                {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[RemoveFromBagServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                string username = player.playerUsername;
+
+                if (playerWhoRemoved != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to spoof removing item from belt bag as another player. ({playerWhoRemoved})");
+                    return;
+                }
+
+                GameObject removedFromBagItem = objectRef;
+
+                if (removedFromBagItem == null)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a item to drop from belt bag that doesn't exist ({objectRef.NetworkObjectId})");
+                    return;
+                }
+
+                if (removedFromBagItem.TryGetComponent(out GrabbableObject droppedItem) == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag that isn't a grabbable object ({removedFromBagItem.name})");
+                    return;
+                }
+
+                float dropDistance = Vector3.Distance(player.transform.position, targetPosition);
+
+                Vector3 dropPosition = droppedItem.GetItemFloorPosition();
+                Vector3 dropLocalPosition;
+
+                if (setInElevator)
+                {
+                    dropLocalPosition = player.playersManager.elevatorTransform.InverseTransformPoint(dropPosition);
+                }
+                else
+                {
+                    dropLocalPosition = player.playersManager.propsContainer.InverseTransformPoint(dropPosition);
+                }
+
+                if (dropDistance > player.grabDistance + 7)
+                {
+                    if (dropPosition == player.transform.position)
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag too far away and it didn't fall. {droppedItem.name} {dropPosition}");
+                    }
+
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to drop an object from belt bag too far away. ({(int)dropDistance}) ({droppedItem.name})");
+                    player.ThrowObjectServerRpc(
+                        objectRef,
+                        player.isInElevator,
+                        player.isInHangarShipRoom,
+                        dropLocalPosition,
+                        (int)player.transform.localEulerAngles.y
+                    );
+                    return;
+                }
+
+                instance.RemoveFromBagServerRpc(objectRef, setInElevator, setInShip, targetPosition, senderPlayerId, inFactory);
+            }
+
+            public void TryAddObjectToBagServerRpc(NetworkObjectReference netObjectRef, int playerWhoAdded, BeltBagItem instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[TryAddObjectToBagServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                string username = player.playerUsername;
+
+                if (playerWhoAdded != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to spoof adding item to belt bag as another player. ({playerWhoAdded})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.CancelAddObjectToBagClientRpc(senderPlayerId, instance, clientRpcParams);
+                    return;
+                }
+
+                GameObject attemptedItemAddedToBag = netObjectRef;
+
+                if (attemptedItemAddedToBag == null)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) sent a item to add to belt bag that doesn't exist ({netObjectRef.NetworkObjectId})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.CancelAddObjectToBagClientRpc(senderPlayerId, instance, clientRpcParams);
+                    return;
+                }
+
+                if (!attemptedItemAddedToBag.TryGetComponent(out GrabbableObject attemptedGrabbableObject))
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add item to belt bag that isn't a grabbable item ({attemptedItemAddedToBag.name})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.CancelAddObjectToBagClientRpc(senderPlayerId, instance, clientRpcParams);
+                    return;
+                }
+
+                if (configLimitBeltBagToNonScrap.Value && attemptedGrabbableObject.itemProperties.isScrap == false)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to pickup scrap using the belt bag ({attemptedItemAddedToBag.name})");
+                    ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
+                    HostFixesServerSendRpcs.Instance.CancelAddObjectToBagClientRpc(senderPlayerId, instance, clientRpcParams);
+                    return;
+                }
+
+                instance.TryAddObjectToBagServerRpc(netObjectRef, senderPlayerId);
+            }
+
+            public void TryCheckingBagServerRpc(int playerId, BeltBagItem instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[TryCheckingBagServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (playerId != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof checking bag as another player ({playerId})");
+                    return;
+                }
+
+                instance.TryCheckingBagServerRpc(senderPlayerId);
             }
         }
 
@@ -3167,7 +3396,7 @@ namespace HostFixes
                 }
             }
 
-            public void UpdateAnimTriggerClientRpc(AnimatedObjectTrigger instance, ClientRpcParams clientRpcParams)
+            public void UpdateAnimTriggerClientRpc(AnimatedObjectTrigger instance, ClientRpcParams clientRpcParams = default)
             {
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
                 {
@@ -3191,7 +3420,7 @@ namespace HostFixes
                 }
             }
 
-            public void SyncTerminalValuesClientRpc(int groupCredits, int numItemsInDropship, bool vehicleWarranty, Terminal instance, ClientRpcParams clientRpcParams)
+            public void SyncTerminalValuesClientRpc(int groupCredits, int numItemsInDropship, bool vehicleWarranty, Terminal instance, ClientRpcParams clientRpcParams = default)
             {
                 if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
                 {
@@ -3200,6 +3429,16 @@ namespace HostFixes
                     BytePacker.WriteValueBitPacked(bufferWriter, numItemsInDropship);
                     bufferWriter.WriteValueSafe(in vehicleWarranty);
                     EndSendClientRpc.Invoke(instance, [bufferWriter, 1505747100u, clientRpcParams, RpcDelivery.Reliable]);
+                }
+            }
+
+            public void CancelAddObjectToBagClientRpc(int playerWhoAdded, BeltBagItem instance, ClientRpcParams clientRpcParams = default)
+            {
+                if (__rpc_exec_stage != __RpcExecStage.Client && (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost))
+                {
+                    FastBufferWriter bufferWriter = (FastBufferWriter)BeginSendClientRpc.Invoke(instance, [1076504254u, clientRpcParams, RpcDelivery.Reliable]);
+                    BytePacker.WriteValueBitPacked(bufferWriter, playerWhoAdded);
+                    EndSendClientRpc.Invoke(instance, [bufferWriter, 1076504254u, clientRpcParams, RpcDelivery.Reliable]);
                 }
             }
         }
@@ -6070,6 +6309,146 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch StopPullingCordServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class RemoveFromBagNonElevatorParentServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(BeltBagItem), "__rpc_handler_1618346907")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "RemoveFromBagNonElevatorParentServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.RemoveFromBagNonElevatorParentServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch RemoveFromBagNonElevatorParentServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class RemoveFromBagServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(BeltBagItem), "__rpc_handler_4159001947")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "RemoveFromBagServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.RemoveFromBagServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch RemoveFromBagServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class TryAddObjectToBagServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(BeltBagItem), "__rpc_handler_2988305002")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "TryAddObjectToBagServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.TryAddObjectToBagServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch TryAddObjectToBagServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class TryCheckingBagServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(BeltBagItem), "__rpc_handler_4205663608")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "TryCheckingBagServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.TryCheckingBagServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch TryCheckingBagServerRpc");
                     }
 
                     return codes.AsEnumerable();
