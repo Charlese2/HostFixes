@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 using static HostFixes.Plugin;
@@ -46,7 +47,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError("Could not patch SyncShipUnlockablesServerRpc's Crash");
+                    Log.LogWarning("Could not patch SyncShipUnlockablesServerRpc's Crash");
                 }
 
                 return codes.AsEnumerable();
@@ -105,7 +106,7 @@ namespace HostFixes
                 }
                 else
                 {
-                    Log.LogError("Could not patch SyncAlreadyHeldObjectsClientRpc");
+                    Log.LogWarning("Could not patch SyncAlreadyHeldObjectsClientRpc");
                 }
 
                 return codes.AsEnumerable();
@@ -131,20 +132,9 @@ namespace HostFixes
             {
                 if (NetworkManager.Singleton?.IsListening == true)
                 {
-                    if (!SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value))
-                    {
-                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in steamIdtoConnectionIdMap.");
-                    }
-
-                    if (!ConnectionIdtoSteamIdMap.Remove(connection.Id))
-                    {
-                        Log.LogWarning($"connectionId: ({connection.Id}) was not in connectionIdtoSteamIdMap.");
-                    }
-
-                    if (!playerSteamNames.Remove(info.identity.SteamId.Value))
-                    {
-                        Log.LogWarning($"steamId: ({info.identity.SteamId.Value}) was not in playerSteamNames.");
-                    }
+                    SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value);
+                    ConnectionIdtoSteamIdMap.Remove(connection.Id);
+                    playerSteamNames.Remove(info.identity.SteamId.Value);
                 }
             }
         }
@@ -159,11 +149,7 @@ namespace HostFixes
                 {
                     if (ClientIdToSteamIdMap.TryGetValue(clientId, out ulong steamId))
                     {
-                        if (!SteamIdtoClientIdMap.Remove(steamId))
-                        {
-                            Log.LogWarning($"({steamId}) was not in steamIdtoClientIdMap.");
-                        }
-
+                        SteamIdtoClientIdMap.Remove(steamId);
                         ClientIdToSteamIdMap.Remove(clientId);
                     }
                 }
@@ -191,8 +177,8 @@ namespace HostFixes
         class MapSteamIdToClientId
         {
             public static void Postfix(
-                GameNetworkManager __instance, 
-                ref NetworkManager.ConnectionApprovalRequest request, 
+                GameNetworkManager __instance,
+                ref NetworkManager.ConnectionApprovalRequest request,
                 ref NetworkManager.ConnectionApprovalResponse response)
             {
                 if (!__instance.disableSteam)
@@ -206,8 +192,17 @@ namespace HostFixes
 
                         if (StartOfRound.Instance?.KickedClientIds.Contains(steamId) == true)
                         {
-                            response.Reason = "You cannot rejoin after being kicked.";
+                            if (response.Reason == "")
+                            {
+                                response.Reason = "You cannot rejoin after being kicked.";
+                            }
                             response.Approved = false;
+                        }
+
+                        string[] payload = Encoding.ASCII.GetString(request.Payload).Split(",");
+                        if (payload.Length >= 2 && payload[1] != steamId.ToString())
+                        {
+                            Log.LogInfo($"SteamID sent by client ({payload[1]}) doesn't match SteamID from steam ({steamId}).");
                         }
                     }
                     else
@@ -313,8 +308,8 @@ namespace HostFixes
         }
 
         [HarmonyWrapSafe]
-        [HarmonyPatch(typeof(StartOfRound), "OpenShipDoors")]
-        class OpenShipDoors_Patch
+        [HarmonyPatch(typeof(StartOfRound), "ShipLeave")]
+        class ShipLeave_Patch
         {
             public static void Prefix()
             {
