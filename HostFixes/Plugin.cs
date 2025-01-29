@@ -2213,7 +2213,7 @@ namespace HostFixes
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
-                    Log.LogError($"[ChangeEnemyOwnerServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    Log.LogError($"[HitEnemyServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
