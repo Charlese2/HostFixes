@@ -3073,11 +3073,62 @@ namespace HostFixes
 
                 if (Vector3.Distance(instance.transform.position, player.transform.position) > 20f)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to swap radar target to far away from screen.");
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to swap radar target too far away from screen.");
                     return;
                 }
 
                 instance.SwitchRadarTargetServerRpc(targetIndex);
+            }
+
+            public void PullCordServerRpc(int playerPullingCord, ShipAlarmCord instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[PullCordServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (playerPullingCord != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof pulling ship horn cord from another player. ({playerPullingCord})");
+                    return;
+                }
+
+                if (player.isPlayerDead)
+                {
+                    return;
+                }
+
+                if (Vector3.Distance(instance.transform.position, player.transform.position) > 20f)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to pull ship horn cord from too far away.");
+                    return;
+                }
+
+                instance.PullCordServerRpc(playerPullingCord);
+            }
+
+            public void StopPullingCordServerRpc(int playerPullingCord, ShipAlarmCord instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[PullCordServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+
+                if (playerPullingCord != senderPlayerId)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof stopping pulling ship horn cord from another player. ({playerPullingCord})");
+                    return;
+                }
+
+                instance.StopPullingCordServerRpc(playerPullingCord);
             }
         }
 
@@ -5949,6 +6000,76 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch SwitchRadarTargetServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class PullCordServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipAlarmCord), "__rpc_handler_504098657")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "PullCordServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.PullCordServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch PullCordServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class StopPullingCordServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(ShipAlarmCord), "__rpc_handler_967408504")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "StopPullingCordServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.StopPullingCordServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch StopPullingCordServerRpc");
                     }
 
                     return codes.AsEnumerable();
