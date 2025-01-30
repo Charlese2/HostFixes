@@ -44,6 +44,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configExperimentalPositionCheck = null!;
         public static ConfigEntry<bool> configShipObjectRotationCheck = null!;
         public static ConfigEntry<bool> configLimitGrabDistance = null!;
+        public static ConfigEntry<bool> configLimitTwoHandedItemPickup = null!;
         public static ConfigEntry<bool> configLimitBeltBagToNonScrap = null!;
         public static ConfigEntry<int> configLimitShipLeverDistance = null!;
         public static ConfigEntry<int> configLimitTeleporterButtonDistance = null!;
@@ -109,6 +110,8 @@ namespace HostFixes
                 "Only allow ship objects to be placed if the they are still upright.");
             configLimitGrabDistance = Config.Bind("General", "Limit grab distance", false,
                 "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
+            configLimitTwoHandedItemPickup = Config.Bind("General", "Prevent carrying multiple 2 handed items", false,
+                "Prevent players from carrying more than one two handed item at once");
             configLimitBeltBagToNonScrap = Config.Bind("General", "Limit Belt bag to non scrap", false, 
                 "Prevent any scrap from being picked up using the belt bag");
             configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5,
@@ -1192,7 +1195,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (grabbableObject.itemProperties.twoHanded && instance.ItemSlots.Any(item => item != null && item.itemProperties.twoHanded == true))
+                if (configLimitTwoHandedItemPickup.Value && grabbableObject.itemProperties.twoHanded && instance.ItemSlots.Any(item => item != null && item.itemProperties.twoHanded == true))
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to pickup an extra two-handed object ({grabbableObject.name}");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
