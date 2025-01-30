@@ -1,3 +1,17 @@
+# 1.0.19
+- Added config to log moving ship objects.
+- Added config to prevent picking up more than 1 two handed item.
+- Added check to prevent activating items without them being held.
+- Added check to prevent multiple mimics from being created from a mask.
+- Added check to prevent sending signal translator messages from across the map.
+- Added checks to prevent interacting with the magnet/car while in space.
+- Added logging when a client tries to spoof their SteamID.
+- Added ship horn checks.
+- Added belt bag checks.
+- Added more vehicle interaction logging.
+- Added more network sound cooldowns.
+- Changed logging to use less severe category.
+- Fixed being able to set credits to a negative value.
 # 1.0.18
 - Fixed `SyncShipUnlockablesServerRpc` crash instead canceling the server rpc if it would have crashed.
 # 1.0.17
