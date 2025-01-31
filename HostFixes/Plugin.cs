@@ -1887,8 +1887,8 @@ namespace HostFixes
                     interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
                 }
 
-                float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[senderPlayerId].transform.position);
-                if (Vector3.Distance(interactableTransfrom.position, player.transform.position) > player.grabDistance + 7)
+                float distanceToObject = Vector3.Distance(interactableTransfrom.position, player.transform.position);
+                if (distanceToObject > player.grabDistance + 7)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator?.name}) from too far away" +
                         $" ({distanceToObject})");
@@ -1929,8 +1929,8 @@ namespace HostFixes
                     return;
                 }
 
-                float distanceToObject = Vector3.Distance(instance.transform.position, StartOfRound.Instance.allPlayerScripts[senderPlayerId].transform.position);
-                if (Vector3.Distance(instance.transform.position, player.transform.position) > player.grabDistance + 7)
+                float distanceToObject = Vector3.Distance(instance.transform.position, player.transform.position);
+                if (distanceToObject > player.grabDistance + 7)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with" +
                         $" ({instance.triggerAnimator?.name}) from too far away ({distanceToObject}) parent: ({instance.transform.parent.name})");
