@@ -1,3 +1,5 @@
+# 1.0.20
+- Added basic GUI to show the last 10 log entires on screen. (F9 to toggle)
 # 1.0.19
 - Added config to log moving ship objects.
 - Added config to prevent picking up more than 1 two handed item.
