@@ -1,5 +1,6 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
+using HostFixes.UI;
 using Netcode.Transports.Facepunch;
 using Steamworks;
 using Steamworks.Data;
@@ -219,6 +220,7 @@ namespace HostFixes
             public static void Postfix(Terminal __instance)
             {
                 Instance.StartCoroutine(TerminalAwakeWait(__instance));
+                new InfoPanel();
             }
         }
 

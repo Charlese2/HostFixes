@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
+using HostFixes.UI;
 using LobbyCompatibility.Enums;
 using LobbyCompatibility.Features;
 using Steamworks;
@@ -312,6 +313,9 @@ namespace HostFixes
 
         internal static void ServerStopped(bool _)
         {
+            Log.LogEvent -= InfoPanel.Instance.Log_LogEvent;
+            InfoPanel.Instance.action.performed -= InfoPanel.Instance.ToggleVisibility;
+            InfoPanel.Instance.action.Disable();
             playerSteamNames.Clear();
             SteamIdtoConnectionIdMap.Clear();
             ConnectionIdtoSteamIdMap.Clear();
@@ -818,8 +822,6 @@ namespace HostFixes
                     Log.LogError($"[DespawnEnemyServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
-
-                NetworkObject networkObject = enemyNetworkObject;
 
                 GameObject gameObject = enemyNetworkObject;
 
@@ -1492,7 +1494,7 @@ namespace HostFixes
             public void SetPatienceServerRpc(float valueChange, DepositItemsDesk instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int SenderPlayerId))
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int _))
                 {
                     Log.LogError($"[SetPatienceServerRpc] Failed to get the playerId from clientId: {senderClientId}");
                     return;
@@ -1713,10 +1715,6 @@ namespace HostFixes
                 }
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
 
-                float timeSinceLast = Time.time - positionCacheUpdateTime[instance.playerClientId];
-
-                float maxDistancePerTick = instance.movementSpeed *
-                    (10f / Mathf.Max(instance.carryWeight, 1.0f)) / NetworkManager.Singleton.NetworkTickSystem.TickRate;
                 if (!configExperimentalPositionCheck.Value ||
                     StartOfRound.Instance.suckingPlayersOutOfShip ||
                     StartOfRound.Instance.inShipPhase ||
@@ -1730,6 +1728,7 @@ namespace HostFixes
 
                 if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 150f)
                 {
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({player.playerUsername}) UpdatePlayerPositionServerRpc {Vector3.Distance(newPos, playerPositions[instance.playerClientId])}");
                     allowedMovement[instance.playerClientId] = false;
                     return;
                 }
@@ -2133,13 +2132,11 @@ namespace HostFixes
             public void UpdateEnemyPositionServerRpc(Vector3 newPos, EnemyAI instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int _))
                 {
                     Log.LogError($"[UpdateEnemyPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
 
                 float newDistance = Vector3.Distance(newPos, instance.transform.position);
 
@@ -2670,13 +2667,11 @@ namespace HostFixes
             public void PushTruckFromOwnerServerRpc(Vector3 pos, VehicleController instance, ServerRpcParams serverRpcParams)
             {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
-                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int _))
                 {
                     Log.LogError($"[SpringDriverSeatServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
-
-                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
 
                 if (senderClientId != instance.OwnerClientId)
                 {
