@@ -3021,6 +3021,12 @@ namespace HostFixes
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
 
+                if (senderClientId == 0)
+                {
+                    instance.PlayAmbienceClipServerRpc(soundType, clipIndex, soundVolume, playInsanitySounds);
+                    return;
+                }
+
                 if (player.isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to play AmbienceClip while dead on the server.");
