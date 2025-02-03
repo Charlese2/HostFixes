@@ -1,3 +1,5 @@
+# 1.0.21
+- Fixed ambience clips being blocked if the host is dead.
 # 1.0.20
 - Added basic GUI to show the last 10 log entires on screen. (F9 to toggle)
 # 1.0.19
