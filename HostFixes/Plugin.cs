@@ -459,7 +459,7 @@ namespace HostFixes
 
                 if (newGroupCreditsAmount < 0)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried tried to set credits to a negative number unlocking ship unlockable.");
+                    Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to set credits to a negative number unlocking ship unlockable.");
                     return;
                 }
 
@@ -1093,15 +1093,28 @@ namespace HostFixes
                     return;
                 }
 
+                if (start)
+                {
+                    instance.ReloadGunEffectsServerRpc(start);
+                    return;
+                }
+
                 PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
 
-                if (reloadGunEffectsOnCooldown.TryGetValue(senderPlayerId, out bool reloading) && reloading == true) return;
+                if (reloadGunEffectsOnCooldown.TryGetValue(senderPlayerId, out bool reloading) && reloading)
+                {
+                    instance.gunAnimator.SetBool("Reloading", false);
+                    instance.isReloading = false;
+                    return;
+                }
 
                 Instance.StartCoroutine(ReloadGunEffectsCooldown(senderPlayerId));
 
                 int ammoInInventorySlot = instance.FindAmmoInInventory();
                 if (ammoInInventorySlot == -1)
                 {
+                    instance.gunAnimator.SetBool("Reloading", false);
+                    instance.isReloading = false;
                     return;
                 }
 
@@ -1112,6 +1125,8 @@ namespace HostFixes
 
                 if (instance.shellsLoaded >= 2)
                 {
+                    instance.gunAnimator.SetBool("Reloading", false);
+                    instance.isReloading = false;
                     return;
                 }
 
@@ -1124,7 +1139,6 @@ namespace HostFixes
                     Log.LogWarning($"[ReloadGunEffectsServerRpc] Found item type that wasn't GunAmmo {player.ItemSlots[ammoInInventorySlot].GetType()}");
                 }
 
-                instance.shellsLoaded++;
                 instance.ReloadGunEffectsServerRpc(start);
             }
 

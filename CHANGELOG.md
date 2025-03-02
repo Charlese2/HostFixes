@@ -1,3 +1,5 @@
+# 1.0.22
+- Fixed Shotgun reload animation
 # 1.0.21
 - Fixed ambience clips being blocked if the host is dead.
 # 1.0.20
