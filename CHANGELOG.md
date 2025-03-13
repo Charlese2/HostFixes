@@ -1,3 +1,5 @@
+# 1.0.23
+- Fixed belt bag scrap check blocking anything but scrap.
 # 1.0.22
 - Fixed Shotgun reload animation
 # 1.0.21

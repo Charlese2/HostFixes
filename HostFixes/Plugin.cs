@@ -3347,7 +3347,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (configLimitBeltBagToNonScrap.Value && attemptedGrabbableObject.itemProperties.isScrap == false)
+                if (configLimitBeltBagToNonScrap.Value && attemptedGrabbableObject.itemProperties.isScrap == true)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to pickup scrap using the belt bag ({attemptedItemAddedToBag.name})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
