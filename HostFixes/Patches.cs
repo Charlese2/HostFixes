@@ -130,7 +130,7 @@ namespace HostFixes
         {
             public static void Prefix(ref Connection connection, ref ConnectionInfo info)
             {
-                if (NetworkManager.Singleton?.IsListening == true)
+                if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening == true)
                 {
                     SteamIdtoConnectionIdMap.Remove(info.identity.SteamId.Value);
                     ConnectionIdtoSteamIdMap.Remove(connection.Id);
@@ -202,7 +202,7 @@ namespace HostFixes
 
                     if (ConnectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
                     {
-                        if (StartOfRound.Instance?.KickedClientIds.Contains(steamId) == true)
+                        if (StartOfRound.Instance != null && StartOfRound.Instance.KickedClientIds.Contains(steamId) == true)
                         {
                             if (response.Reason == "")
                             {

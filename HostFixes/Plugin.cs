@@ -141,7 +141,12 @@ namespace HostFixes
 
         private void UpdatePlayerPositionCache()
         {
-            if (NetworkManager.Singleton?.IsHost == false || StartOfRound.Instance == null) return;
+            if (NetworkManager.Singleton != null &&
+                NetworkManager.Singleton.IsHost == false ||
+                StartOfRound.Instance == null)
+            {
+                return;
+            }
 
             foreach (PlayerControllerB player in StartOfRound.Instance.allPlayerScripts)
             {
@@ -777,7 +782,7 @@ namespace HostFixes
                         Mathf.RoundToInt(newRotation.z) != Mathf.RoundToInt(placeableShipObject.mainMesh.transform.eulerAngles.z))
                     {
                         Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                            $"tried to place a ship object ({placeableShipObject.parentObject?.name}) with the wrong rotation. " +
+                            $"tried to place a ship object ({placeableShipObject.parentObject.name}) with the wrong rotation. " +
                             $"x: ({newRotation.x}) ({placeableShipObject.mainMesh.transform.eulerAngles.x}) " +
                             $"z: ({newRotation.z}) ({placeableShipObject.mainMesh.transform.eulerAngles.z})");
                         return;
@@ -808,7 +813,14 @@ namespace HostFixes
 
                 if (configLogShipObjects.Value)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object. ({placeableShipObject?.parentObject?.name})");
+                    if (placeableShipObject != null && placeableShipObject.parentObject != null)
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object. ({placeableShipObject.parentObject.name})");
+                    }
+                    else
+                    {
+                        Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) moved ship object.");
+                    }
                 }
 
                 instance.PlaceShipObjectServerRpc(newPosition, newRotation, objectRef, playerWhoMoved);
@@ -825,16 +837,16 @@ namespace HostFixes
 
                 GameObject gameObject = enemyNetworkObject;
 
-                if (senderClientId == 0)
+                string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
+
+                if (senderClientId != 0)
                 {
-                    instance.DespawnEnemyServerRpc(enemyNetworkObject);
-                }
-                else
-                {
-                    string username = StartOfRound.Instance.allPlayerScripts[senderPlayerId].playerUsername;
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) attemped to despawn an enemy on the server: " +
-                        $"{gameObject?.name} {enemyNetworkObject.NetworkObjectId}");
+                        $"{(gameObject != null ? gameObject.name : "null")} {enemyNetworkObject.NetworkObjectId}");
+                    return;
                 }
+
+                instance.DespawnEnemyServerRpc(enemyNetworkObject);
             }
 
             public void EndGameServerRpc(int playerClientId, StartOfRound instance, ServerRpcParams serverRpcParams)
@@ -1033,7 +1045,13 @@ namespace HostFixes
                     return;
                 }
 
-                bool shovelHitForceIsUnmodified = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include)?.shovelHitForce == 1;
+                Shovel? shovel = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include);
+
+                bool shovelHitForceIsUnmodified = true;
+                if (shovel != null)
+                {
+                    shovelHitForceIsUnmodified = shovel.shovelHitForce == 1;
+                }
 
                 if (shovelHitForceIsUnmodified && damageAmount > 20)
                 {
@@ -1816,7 +1834,8 @@ namespace HostFixes
                 float interactDistance = Vector3.Distance(instance.transform.position, player.transform.position);
                 if (interactDistance > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) interacted with ({instance.transform.parent?.name}) " +
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) interacted with " +
+                        $"({(instance.transform.parent != null ? instance.transform.parent.name : instance.name) }) " +
                         $"from too far away. ({interactDistance})");
                 }
 
@@ -1873,14 +1892,16 @@ namespace HostFixes
                 if (playerWhoTriggered != senderPlayerId && playerWhoTriggered != -1)
                 {
                     Log.LogInfo($"[UpdateAnimServerRpc] " +
-                        $"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof updating an animator from another player. ({instance.triggerAnimator?.name}) (#{playerWhoTriggered}) ");
+                        $"Player #{senderPlayerId} ({player.playerUsername}) tried to spoof updating an animator from another player. " +
+                        $"({(instance.triggerAnimator != null ? instance.triggerAnimator.name : instance.name)}) (#{playerWhoTriggered}) ");
                     return;
                 }
 
                 if (player.isPlayerDead)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) " +
-                        $"tried to interact with an animated object ({instance.triggerAnimator?.name}) while they are dead on the server.");
+                        $"tried to interact with an animated object " +
+                        $"({(instance.triggerAnimator != null ? instance.triggerAnimator.name : instance.name)}) while they are dead on the server.");
                     return;
                 }
 
@@ -1895,7 +1916,7 @@ namespace HostFixes
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) toggled magnet");
                 }
 
-                if (instance.triggerAnimator?.name.StartsWith("GarageDoorContainer") == true)
+                if ((instance.triggerAnimator != null ? instance.triggerAnimator.name : instance.name).StartsWith("GarageDoorContainer") == true)
                 {
                     interactableTransfrom = instance.transform.Find("LeverSwitchContainer");
                 }
@@ -1903,7 +1924,8 @@ namespace HostFixes
                 float distanceToObject = Vector3.Distance(interactableTransfrom.position, player.transform.position);
                 if (distanceToObject > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with ({instance.triggerAnimator?.name}) from too far away" +
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with " +
+                        $"({(instance.triggerAnimator != null ? instance.triggerAnimator.name : instance.name)}) from too far away" +
                         $" ({distanceToObject})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimClientRpc(instance.boolValue, playSecondaryAudios, playerWhoTriggered, instance, clientRpcParams);
@@ -1945,8 +1967,9 @@ namespace HostFixes
                 float distanceToObject = Vector3.Distance(instance.transform.position, player.transform.position);
                 if (distanceToObject > player.grabDistance + 7)
                 {
-                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with" +
-                        $" ({instance.triggerAnimator?.name}) from too far away ({distanceToObject}) parent: ({instance.transform.parent.name})");
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to interact with " +
+                        $"({(instance.triggerAnimator != null ? instance.triggerAnimator.name : instance.name)}) " +
+                        $"from too far away ({distanceToObject}) parent: ({instance.transform.parent.name})");
                     ClientRpcParams clientRpcParams = new() { Send = new() { TargetClientIds = [senderClientId] } };
                     HostFixesServerSendRpcs.Instance.UpdateAnimTriggerClientRpc(instance, clientRpcParams);
                     Instance.StartCoroutine(Call_UpdateAnimTriggerClientRpc_AfterOneFrame(instance, clientRpcParams));
@@ -2244,7 +2267,13 @@ namespace HostFixes
                     return;
                 }
 
-                bool shovelHitForceIsUnmodified = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include)?.shovelHitForce == 1;
+                Shovel? shovel = FindFirstObjectByType<Shovel>(FindObjectsInactive.Include);
+
+                bool shovelHitForceIsUnmodified = true;
+                if (shovel != null)
+                {
+                    shovelHitForceIsUnmodified = shovel.shovelHitForce == 1;
+                }
 
                 if (force > 5 && shovelHitForceIsUnmodified)
                 {

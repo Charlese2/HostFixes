@@ -29,8 +29,6 @@ namespace HostFixes.UI
             rectTransform.anchorMin = new Vector2(0.6f, 0.6f);
             rectTransform.anchorMax = new Vector2(0.943f, 0.89f);
 
-
-
             var canvasRenderer = GameObjectInstance.AddComponent<CanvasRenderer>();
             canvasRenderer.SetColor(new Color(1.0f, 1.0f, 1.0f, 1.0f));
 
