@@ -176,6 +176,21 @@ namespace HostFixes
         [HarmonyPatch(typeof(GameNetworkManager), "ConnectionApproval")]
         class MapSteamIdToClientId
         {
+            [HarmonyPriority(Priority.First)]
+            public static void Prefix(GameNetworkManager __instance, ref NetworkManager.ConnectionApprovalRequest request)
+            {
+                if (!__instance.disableSteam)
+                {
+                    ulong transportId = NetworkManager.Singleton.ConnectionManager.ClientIdToTransportId(request.ClientNetworkId);
+
+                    if (ConnectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
+                    {
+                        SteamIdtoClientIdMap[steamId] = request.ClientNetworkId;
+                        ClientIdToSteamIdMap[request.ClientNetworkId] = steamId;
+                    }
+                }
+            }
+
             public static void Postfix(
                 GameNetworkManager __instance,
                 ref NetworkManager.ConnectionApprovalRequest request,
@@ -187,9 +202,6 @@ namespace HostFixes
 
                     if (ConnectionIdtoSteamIdMap.TryGetValue((uint)transportId, out ulong steamId))
                     {
-                        SteamIdtoClientIdMap[steamId] = request.ClientNetworkId;
-                        ClientIdToSteamIdMap[request.ClientNetworkId] = steamId;
-
                         if (StartOfRound.Instance?.KickedClientIds.Contains(steamId) == true)
                         {
                             if (response.Reason == "")
