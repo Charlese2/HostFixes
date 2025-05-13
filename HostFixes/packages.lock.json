@@ -43,8 +43,8 @@
       "TeamBMX.LobbyCompatibility": {
         "type": "Direct",
         "requested": "[1.*, )",
-        "resolved": "1.4.0",
-        "contentHash": "lP+K43xFUR6/Zjnj8W0Qh0JRFaWnoxCDaKroT/pW0BFFuhIrzkqZASRe6BCc0obMQrvc5LKjhXxvyjG4vW5GHw=="
+        "resolved": "1.5.0",
+        "contentHash": "f0f81IOAYCjAlpL1eD53fiaM+WGtLoUZcW95aDFkhqcBrpfZ8zPAxXZ2PJUfjLyV0FTxl0exyP+YMDwXb32T6Q=="
       },
       "UnityEngine.Modules": {
         "type": "Direct",
