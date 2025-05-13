@@ -32,6 +32,7 @@ namespace HostFixes
         internal static Dictionary<ulong, bool> allowedMovement = [];
         internal static Dictionary<ulong, bool> onShip = [];
         internal static Dictionary<ulong, float> positionCacheUpdateTime = [];
+        internal static Dictionary<int, bool> ammoHasBeenDeletedOnReload = [];
         internal static bool terminalSoundPlaying;
 
         public static ConfigEntry<int> configMinimumVotesToLeaveEarly = null!;
@@ -47,6 +48,7 @@ namespace HostFixes
         public static ConfigEntry<bool> configLimitGrabDistance = null!;
         public static ConfigEntry<bool> configLimitTwoHandedItemPickup = null!;
         public static ConfigEntry<bool> configLimitBeltBagToNonScrap = null!;
+        public static ConfigEntry<bool> configPreventInfiniteShotgunAmmo = null!;
         public static ConfigEntry<int> configLimitShipLeverDistance = null!;
         public static ConfigEntry<int> configLimitTeleporterButtonDistance = null!;
 
@@ -115,6 +117,8 @@ namespace HostFixes
                 "Prevent players from carrying more than one two handed item at once");
             configLimitBeltBagToNonScrap = Config.Bind("General", "Limit Belt bag to non scrap", false, 
                 "Prevent any scrap from being picked up using the belt bag");
+            configPreventInfiniteShotgunAmmo = Config.Bind("General", "Prevent firing the shotgun without ammo.", false, 
+                "Prevent firing the shotgun without ammo by reqiring the ammo to be used when reloading.");
             configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5,
                 "Limit distance that someone can pull the ship lever from. 0 to disable.");
             configLimitTeleporterButtonDistance = Config.Bind("General", "Limit teleporter button distance", 5,
@@ -1111,7 +1115,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (start)
+                if (configPreventInfiniteShotgunAmmo.Value == false || start)
                 {
                     instance.ReloadGunEffectsServerRpc(start);
                     return;
@@ -1128,19 +1132,6 @@ namespace HostFixes
 
                 Instance.StartCoroutine(ReloadGunEffectsCooldown(senderPlayerId));
 
-                int ammoInInventorySlot = instance.FindAmmoInInventory();
-                if (ammoInInventorySlot == -1)
-                {
-                    instance.gunAnimator.SetBool("Reloading", false);
-                    instance.isReloading = false;
-                    return;
-                }
-
-                if (player.ItemSlots[ammoInInventorySlot] == null)
-                {
-                    Log.LogWarning("Item slot was null while reloading shotgun. Should never be null.");
-                }
-
                 if (instance.shellsLoaded >= 2)
                 {
                     instance.gunAnimator.SetBool("Reloading", false);
@@ -1148,16 +1139,50 @@ namespace HostFixes
                     return;
                 }
 
-                if (player.ItemSlots[ammoInInventorySlot].GetType() == typeof(GunAmmo))
+                if (ammoHasBeenDeletedOnReload[senderPlayerId] == false)
                 {
-                    player.DestroyItemInSlot(ammoInInventorySlot);
-                }
-                else
-                {
-                    Log.LogWarning($"[ReloadGunEffectsServerRpc] Found item type that wasn't GunAmmo {player.ItemSlots[ammoInInventorySlot].GetType()}");
+                    instance.gunAnimator.SetBool("Reloading", false);
+                    instance.isReloading = false;
+                    return;
                 }
 
+                ammoHasBeenDeletedOnReload[senderPlayerId] = false;
                 instance.ReloadGunEffectsServerRpc(start);
+            }
+
+            public void DestroyItemInSlotServerRpc(int itemSlot, PlayerControllerB instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[DestroyItemInSlotServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                if (configPreventInfiniteShotgunAmmo.Value == false)
+                {
+                    instance.DestroyItemInSlotServerRpc(itemSlot);
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                if (itemSlot < 0 && itemSlot > player.ItemSlots.Count() - 1)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to destory item in slot ({itemSlot}) while the last slot is ({player.ItemSlots.Count() - 1}");
+                    return;
+                }
+
+                if (player.ItemSlots[itemSlot].GetType() != typeof(GunAmmo))
+                {
+                    if (senderClientId == 0)
+                    {
+                        Log.LogWarning($"[DestroyItemInSlotServerRpc] New item type being deleted? ({player.ItemSlots[itemSlot].GetType()})");
+                    }
+                    return;
+                }
+
+                ammoHasBeenDeletedOnReload[senderPlayerId] = true;
+                instance.DestroyItemInSlotServerRpc(itemSlot);
             }
 
             public void ChangeOwnershipOfPropServerRpc(ulong NewOwner, GrabbableObject instance, ServerRpcParams serverRpcParams)
@@ -4046,6 +4071,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch ReloadGunEffectsServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class DestroyItemInSlotServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_1388366573")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "DestroyItemInSlotServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.DestroyItemInSlotServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch DestroyItemInSlotServerRpc");
                     }
 
                     return codes.AsEnumerable();

@@ -1,3 +1,6 @@
+# 1.0.24
+- Added config option to prevent using infinite ammo. (against players)
+- Fixed reloading shotgun deleting more than one shell.
 # 1.0.23
 - Fixed belt bag scrap check blocking anything but scrap.
 # 1.0.22
