@@ -18,42 +18,6 @@ namespace HostFixes
 {
     internal class Patches
     {
-        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.SyncShipUnlockablesServerRpc))]
-        internal static class Fix_SyncShipUnlockablesServerRpc_Crash
-        {
-            public static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
-            {
-                bool found = false;
-                int location = -1;
-                List<CodeInstruction> codes = new(instructions);
-
-                for (int i = 0; i < codes.Count; i++)
-                {
-                    if (codes[i].opcode == OpCodes.Call && codes[i].operand is MethodInfo { Name: "FindObjectsOfType" })
-                    {
-                        location = i;
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (found)
-                {
-                    codes.Insert(location + 1, Transpilers.EmitDelegate<Func<IEnumerable<PlaceableShipObject>, IEnumerable<PlaceableShipObject>>>(
-                        placeableShipObjects => placeableShipObjects.Where(
-                            placeableShipObject => placeableShipObject.parentObject != null)
-                        )
-                    );
-                }
-                else
-                {
-                    Log.LogWarning("Could not patch SyncShipUnlockablesServerRpc's Crash");
-                }
-
-                return codes.AsEnumerable();
-            }
-        }
-
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.SyncAlreadyHeldObjectsServerRpc))]
         internal static class SyncAlreadyHeldObjects_NullRef
         {
