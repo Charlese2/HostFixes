@@ -674,7 +674,18 @@ namespace HostFixes
                     return;
                 }
 
-                if (chatMessage.EndsWith(" started the ship."))
+                if (senderClientId == 0)
+                {
+                    instance.AddTextMessageServerRpc(chatMessage);
+                    return;
+                }
+
+                if (chatMessage.Equals($"[playerNum{senderPlayerId}] started the ship."))
+                {
+                    instance.AddTextMessageServerRpc(chatMessage);
+                    return;
+                }
+                else if (chatMessage.EndsWith($" started the ship."))
                 {
                     return;
                 }
@@ -685,19 +696,16 @@ namespace HostFixes
                     return;
                 }
 
-                if (senderClientId == 0 ||
-                    chatMessage.Equals($"{username} joined the ship.") ||
-                    chatMessage.Equals($"{steamUsername} joined the ship.") ||
-                    chatMessage.Equals($"{steamUsername}... joined the ship.") ||
-                    chatMessage.Equals($"{username} was left behind.") ||
-                    chatMessage.StartsWith($"[morecompanycosmetics];{senderPlayerId};"))
-                {
-                    instance.AddTextMessageServerRpc(chatMessage);
-                }
-                else
+                if (!chatMessage.Equals($"{username} joined the ship.") &&
+                    !chatMessage.Equals($"{steamUsername} joined the ship.") &&
+                    !chatMessage.Equals($"{steamUsername}... joined the ship.") &&
+                    !chatMessage.Equals($"{username} was left behind."))
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({steamUsername}) tried to send message as the server: ({chatMessage})");
+                    return;
                 }
+
+                instance.AddTextMessageServerRpc(chatMessage);
             }
 
             public void SetShipLeaveEarlyServerRpc(TimeOfDay instance, ServerRpcParams serverRpcParams)
