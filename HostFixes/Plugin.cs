@@ -115,9 +115,9 @@ namespace HostFixes
                 "Limit the grab distance to twice of the hosts grab distance. Defaulted to off because of grabbable desync.");
             configLimitTwoHandedItemPickup = Config.Bind("General", "Prevent carrying multiple 2 handed items", false,
                 "Prevent players from carrying more than one two handed item at once");
-            configLimitBeltBagToNonScrap = Config.Bind("General", "Limit Belt bag to non scrap", false, 
+            configLimitBeltBagToNonScrap = Config.Bind("General", "Limit Belt bag to non scrap", false,
                 "Prevent any scrap from being picked up using the belt bag");
-            configPreventInfiniteShotgunAmmo = Config.Bind("General", "Prevent firing the shotgun without ammo.", false, 
+            configPreventInfiniteShotgunAmmo = Config.Bind("General", "Prevent firing the shotgun without ammo.", false,
                 "Prevent firing the shotgun without ammo by reqiring the ammo to be used when reloading.");
             configLimitShipLeverDistance = Config.Bind("General", "Limit ship lever distance", 5,
                 "Limit distance that someone can pull the ship lever from. 0 to disable.");
@@ -1930,7 +1930,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (player.isPlayerDead)
+                if (player.isPlayerDead && instance.triggerAnimator != null && instance.triggerAnimator.name != "ElectricChair")
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) " +
                         $"tried to interact with an animated object " +
