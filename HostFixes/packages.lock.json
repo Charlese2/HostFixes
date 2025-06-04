@@ -33,8 +33,8 @@
       "LethalCompany.GameLibs.Steam": {
         "type": "Direct",
         "requested": "[*-*, )",
-        "resolved": "69.0.1-ngd.0",
-        "contentHash": "Lg4qFz1k0mxj82BDlw9Nxr9MvnyFQo4FDl1Gs80p3qWPU2KS60mc210RX5KSONtiMOnZXeckxNCaPfy2meVHYg==",
+        "resolved": "70.0.0-ngd.0",
+        "contentHash": "i2Iqz1Q8fbF5J5tM39r7hHsTtuiPS0SvFFz7qFL7NVSPj/kJJ1R5eI6xaApLFTWvIOzq1ZbVny6CUcU5wgLfxA==",
         "dependencies": {
           "Newtonsoft.JSON": "13.0.3",
           "UnityEngine.Modules": "2022.3.9"
@@ -43,8 +43,8 @@
       "TeamBMX.LobbyCompatibility": {
         "type": "Direct",
         "requested": "[1.*, )",
-        "resolved": "1.5.0",
-        "contentHash": "f0f81IOAYCjAlpL1eD53fiaM+WGtLoUZcW95aDFkhqcBrpfZ8zPAxXZ2PJUfjLyV0FTxl0exyP+YMDwXb32T6Q=="
+        "resolved": "1.5.1",
+        "contentHash": "U1taVjagI6Ma1v7EXLX9dJpJJGHBt8R2UIdOgPu/k87ZFc9qER19a4C1FPigM7qBdE6/pzXo8ovwuPrRRFb51g=="
       },
       "UnityEngine.Modules": {
         "type": "Direct",

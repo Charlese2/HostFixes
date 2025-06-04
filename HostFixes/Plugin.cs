@@ -1868,7 +1868,7 @@ namespace HostFixes
                 if (interactDistance > player.grabDistance + 7)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) interacted with " +
-                        $"({(instance.transform.parent != null ? instance.transform.parent.name : instance.name) }) " +
+                        $"({(instance.transform.parent != null ? instance.transform.parent.name : instance.name)}) " +
                         $"from too far away. ({interactDistance})");
                 }
 
@@ -3305,7 +3305,7 @@ namespace HostFixes
                 bool inFactory,
                 BeltBagItem instance,
                 ServerRpcParams serverRpcParams)
-                {
+            {
                 ulong senderClientId = serverRpcParams.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
@@ -3438,6 +3438,38 @@ namespace HostFixes
                 }
 
                 instance.TryCheckingBagServerRpc(senderPlayerId);
+            }
+
+            public void SpawnExplosionAtPlayerBodyServerRpc(Vector3 pos, Quaternion rot, int _, int deactivatePlayerBody, GiantKiwiAI instance, ServerRpcParams serverRpcParams)
+            {
+                ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+                if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
+                {
+                    Log.LogError($"[SyncWatchingThreatServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    return;
+                }
+
+                PlayerControllerB player = StartOfRound.Instance.allPlayerScripts[senderPlayerId];
+                if (deactivatePlayerBody < 0 || deactivatePlayerBody >= StartOfRound.Instance.allPlayerScripts.Length)
+                {
+                    return;
+                }
+
+                PlayerControllerB deactivateTarget = StartOfRound.Instance.allPlayerScripts[deactivatePlayerBody];
+
+                if (Vector3.Distance(pos, instance.transform.position) > 10f)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried sending an invalid body to deactivate. ({deactivatePlayerBody})");
+                    return;
+                }
+
+                if (deactivateTarget.deadBody == null || !deactivateTarget.deadBody.isActiveAndEnabled)
+                {
+                    Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to spawn an explosion on an invalid body. ({deactivatePlayerBody})");
+                    return;
+                }
+
+                instance.SpawnExplosionAtPlayerBodyServerRpc(pos, rot, senderPlayerId, deactivatePlayerBody);
             }
         }
 
@@ -6634,6 +6666,41 @@ namespace HostFixes
                     else
                     {
                         Log.LogError("Could not patch TryCheckingBagServerRpc");
+                    }
+
+                    return codes.AsEnumerable();
+                }
+            }
+
+            [HarmonyPatch]
+            class SpawnExplosionAtPlayerBodyServerRpc_Transpile
+            {
+                [HarmonyPatch(typeof(GiantKiwiAI), "__rpc_handler_3238921108")]
+                [HarmonyTranspiler]
+                public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
+                {
+                    var found = false;
+                    var callLocation = -1;
+                    var codes = new List<CodeInstruction>(instructions);
+                    for (int i = 0; i < codes.Count; i++)
+                    {
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "SpawnExplosionAtPlayerBodyServerRpc" })
+                        {
+                            callLocation = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found)
+                    {
+                        codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
+                        codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.SpawnExplosionAtPlayerBodyServerRpc));
+                    }
+                    else
+                    {
+                        Log.LogError("Could not patch SpawnExplosionAtPlayerBodyServerRpc");
                     }
 
                     return codes.AsEnumerable();
