@@ -1,3 +1,7 @@
+# 1.0.25
+- Added checks for GiantKiwi explosions in an invalid state.
+- Fixed interacting with Electric Chair.
+- Removed `SyncShipUnlockablesServerRpc` crash patch. The original function was reworked so it may no longer be needed.
 # 1.0.24
 - Added config option to prevent using infinite ammo. (against players)
 - Fixed reloading shotgun deleting more than one shell.
