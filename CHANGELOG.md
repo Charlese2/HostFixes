@@ -1,3 +1,5 @@
+# 1.0.26
+- Fixed host not syncing shotgun shot.
 # 1.0.25
 - Added checks for GiantKiwi explosions in an invalid state.
 - Fixed interacting with Electric Chair.

@@ -1105,7 +1105,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.shellsLoaded < 1)
+                if (instance.shellsLoaded < 1 && !instance.localClientSendingShootGunRPC)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({player.playerUsername}) tried to force shotgun to shoot with no ammo.");
                     return;
