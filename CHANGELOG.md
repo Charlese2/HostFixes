@@ -1,3 +1,5 @@
+# 1.0.27
+- Fixed RPCs failing to get sender's id after v73
 # 1.0.26
 - Fixed host not syncing shotgun shot.
 # 1.0.25
