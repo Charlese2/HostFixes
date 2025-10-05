@@ -1476,7 +1476,7 @@ namespace HostFixes
                 }
 
                 if (itemParent.transform.parent != null && itemParent.transform.parent.TryGetComponent(out DepositItemsDesk desk) &&
-                    desk.deskObjectsContainer.GetComponentsInChildren<GrabbableObject>().Length > 12)
+                    desk.deskObjectsContainer.GetComponentsInChildren<GrabbableObject>().Length >= 150)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to place extra items on the company desk.");
                     instance.ThrowObjectServerRpc(
@@ -1523,7 +1523,7 @@ namespace HostFixes
                     return;
                 }
 
-                if (instance.deskObjectsContainer.GetComponentsInChildren<GrabbableObject>().Length > 12)
+                if (instance.deskObjectsContainer.GetComponentsInChildren<GrabbableObject>().Length >= 150)
                 {
                     Log.LogInfo($"Player #{senderPlayerId} ({username}) tried to add extra items to the company desk.");
                     return;

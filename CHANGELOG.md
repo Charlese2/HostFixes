@@ -1,3 +1,5 @@
+# 1.0.28
+- Fixed extra desk items check being too low.
 # 1.0.27
 - Fixed RPCs failing to get sender's id after v73
 # 1.0.26
