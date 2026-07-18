@@ -1678,12 +1678,12 @@ namespace HostFixes
                     return;
                 }
 
-                Transform exitPoint = instance.exitPoint;
+                Transform exitPoint = instance.exitScript.entrancePoint;
 
-                if (exitPoint == null)
+                if (instance.gotExitPoint == false)
                 {
                     instance.FindExitPoint();
-                    exitPoint = instance.exitPoint;
+                    exitPoint = instance.exitScript.entrancePoint;
                 }
 
                 playerPositions[(ulong)senderPlayerId] = exitPoint.position;
@@ -1749,7 +1749,7 @@ namespace HostFixes
                 instance.TeleportPlayerOutServerRpc(playerObj, teleportPos);
             }
 
-            public void UpdatePlayerPositionServerRpc(
+            public void UpdatePlayerPositionRpc(
                 Vector3 newPos,
                 bool inElevator,
                 bool inShipRoom,
@@ -1761,7 +1761,7 @@ namespace HostFixes
                 ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
-                    Log.LogError($"[UpdatePlayerPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    Log.LogError($"[UpdatePlayerPositionRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -1786,20 +1786,20 @@ namespace HostFixes
                     Vector3.Dot((newPos - position).normalized, Vector3.down) > 0.3f
                     )
                 {
-                    instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
+                    instance.UpdatePlayerPositionRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
                     allowedMovement[instance.playerClientId] = true;
                     return;
                 }
 
                 if (Vector3.Distance(newPos, playerPositions[instance.playerClientId]) > 150f)
                 {
-                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({player.playerUsername}) UpdatePlayerPositionServerRpc {Vector3.Distance(newPos, playerPositions[instance.playerClientId])}");
+                    InfoPanel.Instance.Log($"Player #{senderPlayerId} ({player.playerUsername}) UpdatePlayerPositionRpc {Vector3.Distance(newPos, playerPositions[instance.playerClientId])}");
                     allowedMovement[instance.playerClientId] = false;
                     return;
                 }
 
                 allowedMovement[instance.playerClientId] = true;
-                instance.UpdatePlayerPositionServerRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
+                instance.UpdatePlayerPositionRpc(newPos, inElevator, inShipRoom, exhausted, isPlayerGrounded);
             }
 
             public void UpdatePlayerRotationServerRpc(short newRot, short newYRot, PlayerControllerB instance, ServerRpcParams _)
@@ -2199,12 +2199,12 @@ namespace HostFixes
                 instance.ChangeEnemyOwnerServerRpc(clientId);
             }
 
-            public void UpdateEnemyPositionServerRpc(Vector3 newPos, EnemyAI instance, __RpcParams RpcParams)
+            public void UpdateEnemyPositionRpc(Vector3 newPos, EnemyAI instance, __RpcParams RpcParams)
             {
                 ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int _))
                 {
-                    Log.LogError($"[UpdateEnemyPositionServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
+                    Log.LogError($"[UpdateEnemyPositionRpc] Failed to get the playerId from senderClientId: {senderClientId}");
                     return;
                 }
 
@@ -2212,7 +2212,7 @@ namespace HostFixes
 
                 if (!configExperimentalChanges.Value)
                 {
-                    instance.UpdateEnemyPositionServerRpc(newPos);
+                    instance.UpdateEnemyPositionRpc(newPos);
                     return;
                 }
 
@@ -2223,10 +2223,10 @@ namespace HostFixes
                     return;
                 }
 
-                instance.UpdateEnemyPositionServerRpc(newPos);
+                instance.UpdateEnemyPositionRpc(newPos);
             }
 
-            public void ActivateItemServerRpc(bool onOff, bool buttonDown, GrabbableObject instance, __RpcParams RpcParams)
+            public void ActivateItemRpc(bool onOff, bool buttonDown, GrabbableObject instance, __RpcParams RpcParams)
             {
                 ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -2263,7 +2263,7 @@ namespace HostFixes
                     Instance.StartCoroutine(ActivateItemCooldown(instance.NetworkObjectId));
                 }
 
-                instance.ActivateItemServerRpc(onOff, buttonDown);
+                instance.ActivateItemRpc(onOff, buttonDown);
             }
 
             public void HitKnifeServerRpc(int hitSurfaceID, KnifeItem instance, ServerRpcParams _)
@@ -2808,6 +2808,7 @@ namespace HostFixes
                 int causeOfDeath,
                 int deathAnimation,
                 Vector3 positionOffset,
+                bool setOverrideDropItems,
                 PlayerControllerB instance,
                 __RpcParams RpcParams
                 )
@@ -2827,7 +2828,7 @@ namespace HostFixes
                     return;
                 }
 
-                instance.KillPlayerServerRpc(playerId, spawnBody, bodyVelocity, causeOfDeath, deathAnimation, positionOffset);
+                instance.KillPlayerServerRpc(playerId, spawnBody, bodyVelocity, causeOfDeath, deathAnimation, positionOffset, setOverrideDropItems);
             }
 
             public void KillPlayerAnimationServerRpc(int playerObjectId, MaskedPlayerEnemy instance, __RpcParams RpcParams)
@@ -3112,7 +3113,16 @@ namespace HostFixes
                 instance.PlayAmbienceClipServerRpc(soundType, clipIndex, soundVolume, playInsanitySounds);
             }
 
-            public void DropAllHeldItemsServerRpc(PlayerControllerB instance, __RpcParams RpcParams)
+            public void DropAllHeldItemsRpc(
+                Vector3 playerPosition,
+                Vector3 itemsPosition,
+                Vector3 itemsRotation,
+                Vector3 playerCameraPosition,
+                Vector3 playerCameraRotation,
+                bool setInShip,
+                bool setInElevator,
+                PlayerControllerB instance,
+                __RpcParams RpcParams)
             {
                 ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
@@ -3123,7 +3133,7 @@ namespace HostFixes
 
                 if (senderClientId == 0)
                 {
-                    instance.DropAllHeldItemsServerRpc();
+                    instance.DropAllHeldItemsRpc(playerPosition, itemsPosition, itemsRotation, playerCameraPosition, playerCameraRotation, setInShip, setInElevator);
                     return;
                 }
 
@@ -3135,7 +3145,7 @@ namespace HostFixes
                     return;
                 }
 
-                instance.DropAllHeldItemsServerRpc();
+                instance.DropAllHeldItemsRpc(playerPosition, itemsPosition, itemsRotation, playerCameraPosition, playerCameraRotation, setInShip, setInElevator);
             }
 
             public void SwitchRadarTargetServerRpc(int targetIndex, ManualCameraRenderer instance, __RpcParams RpcParams)
@@ -4468,9 +4478,9 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class UpdatePlayerPositionServerRpc_Transpile
+            class UpdatePlayerPositionRpc_Transpile
             {
-                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_2013428264")]
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_890924887")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
@@ -4479,7 +4489,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerPositionServerRpc" })
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdatePlayerPositionRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -4491,11 +4501,11 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerPositionServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdatePlayerPositionRpc));
                     }
                     else
                     {
-                        Log.LogError("Could not patch UpdatePlayerPositionServerRpc");
+                        Log.LogError("Could not patch UpdatePlayerPositionRpc");
                     }
 
                     return codes.AsEnumerable();
@@ -5133,9 +5143,9 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class UpdateEnemyPositionServerRpc_Transpile
+            class UpdateEnemyPositionRpc_Transpile
             {
-                [HarmonyPatch(typeof(EnemyAI), "__rpc_handler_255411420")]
+                [HarmonyPatch(typeof(EnemyAI), "__rpc_handler_1277166335")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
@@ -5144,7 +5154,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdateEnemyPositionServerRpc" })
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "UpdateEnemyPositionRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -5156,11 +5166,11 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdateEnemyPositionServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.UpdateEnemyPositionRpc));
                     }
                     else
                     {
-                        Log.LogError("Could not patch UpdateEnemyPositionServerRpc");
+                        Log.LogError("Could not patch UpdateEnemyPositionRpc");
                     }
 
                     return codes.AsEnumerable();
@@ -5168,9 +5178,9 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class ActivateItemServerRpc_Transpile
+            class ActivateItemRpc_Transpile
             {
-                [HarmonyPatch(typeof(GrabbableObject), "__rpc_handler_4280509730")]
+                [HarmonyPatch(typeof(GrabbableObject), "__rpc_handler_319375719")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
@@ -5179,7 +5189,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ActivateItemServerRpc" })
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "ActivateItemRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -5191,11 +5201,11 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ActivateItemServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.ActivateItemRpc));
                     }
                     else
                     {
-                        Log.LogError("Could not patch ActivateItemServerRpc");
+                        Log.LogError("Could not patch ActivateItemRpc");
                     }
 
                     return codes.AsEnumerable();
@@ -6010,7 +6020,7 @@ namespace HostFixes
             [HarmonyPatch]
             class KillPlayerServerRpcRpc_Transpile
             {
-                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_4121569671")]
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_1583426973")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
@@ -6393,9 +6403,9 @@ namespace HostFixes
             }
 
             [HarmonyPatch]
-            class DropAllHeldItemsServerRpc_Transpile
+            class DropAllHeldItemsRpc_Transpile
             {
-                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_760742013")]
+                [HarmonyPatch(typeof(PlayerControllerB), "__rpc_handler_1748753755")]
                 [HarmonyTranspiler]
                 public static IEnumerable<CodeInstruction> UseServerRpcParams(IEnumerable<CodeInstruction> instructions)
                 {
@@ -6404,7 +6414,7 @@ namespace HostFixes
                     var codes = new List<CodeInstruction>(instructions);
                     for (int i = 0; i < codes.Count; i++)
                     {
-                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "DropAllHeldItemsServerRpc" })
+                        if (codes[i].opcode == OpCodes.Callvirt && codes[i].operand is MethodInfo { Name: "DropAllHeldItemsRpc" })
                         {
                             callLocation = i;
                             found = true;
@@ -6416,11 +6426,11 @@ namespace HostFixes
                     {
                         codes.Insert(callLocation, new CodeInstruction(OpCodes.Ldarg_0));
                         codes.Insert(callLocation + 1, new CodeInstruction(OpCodes.Ldarg_2));
-                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.DropAllHeldItemsServerRpc));
+                        codes[callLocation + 2].operand = typeof(HostFixesServerReceiveRpcs).GetMethod(nameof(HostFixesServerReceiveRpcs.DropAllHeldItemsRpc));
                     }
                     else
                     {
-                        Log.LogError("Could not patch DropAllHeldItemsServerRpc");
+                        Log.LogError("Could not patch DropAllHeldItemsRpc");
                     }
 
                     return codes.AsEnumerable();

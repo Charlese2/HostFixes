@@ -33,11 +33,11 @@
       "LethalCompany.GameLibs.Steam": {
         "type": "Direct",
         "requested": "[*-*, )",
-        "resolved": "73.0.0-ngd.0",
-        "contentHash": "iaHCHoJTFiTnAyAYIrEbjCJOOuhcJ42+KJnEbmCmf4UdkhjSwwio2bcdPCbchodB9kEp+3v3ATgkBwYn56/Gdw==",
+        "resolved": "81.0.5-ngd.0",
+        "contentHash": "q1+j5z4lP0TKO16uZ2NclNr9/mb3BUgl6mUO7zbPwbyEHIPJ4m6805rxP0w8mxe4NWNcQRoBkWrIpiNrwak8Hg==",
         "dependencies": {
           "Newtonsoft.JSON": "13.0.3",
-          "UnityEngine.Modules": "2022.3.9"
+          "UnityEngine.Modules": "2022.3.62"
         }
       },
       "TeamBMX.LobbyCompatibility": {
