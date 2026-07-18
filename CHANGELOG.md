@@ -1,3 +1,5 @@
+# 1.0.29
+- Fixed loading of mod after RPC changes.
 # 1.0.28
 - Fixed extra desk items check being too low.
 # 1.0.27
