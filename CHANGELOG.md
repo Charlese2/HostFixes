@@ -1,3 +1,5 @@
+# 1.0.30
+- Fixed reading wrong sender on updated RPCs.
 # 1.0.29
 - Fixed loading of mod after RPC changes.
 # 1.0.28

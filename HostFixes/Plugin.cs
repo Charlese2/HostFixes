@@ -1377,7 +1377,7 @@ namespace HostFixes
                 }
 
                 float throwDistance = Vector3.Distance(
-                    new Vector3(instance.transform.position.x, instance.transform.position.z, 0f),
+                    new Vector3(placePosition.x, placePosition.z, 0f),
                     new Vector3(targetFloorWorldPosition.x, targetFloorWorldPosition.z, 0f)
                 );
 
