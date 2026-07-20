@@ -4,8 +4,6 @@ using BepInEx.Logging;
 using GameNetcodeStuff;
 using HarmonyLib;
 using HostFixes.UI;
-using LobbyCompatibility.Enums;
-using LobbyCompatibility.Features;
 using Steamworks;
 using Steamworks.Data;
 using System.Collections;
@@ -129,18 +127,9 @@ namespace HostFixes
             SteamMatchmaking.OnLobbyCreated += ConnectionEvents.LobbyCreated;
             SteamMatchmaking.OnLobbyMemberJoined += ConnectionEvents.ConnectionAttempt;
             SteamMatchmaking.OnLobbyMemberLeave += ConnectionEvents.ConnectionCleanup;
-            if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("BMX.LobbyCompatibility"))
-            {
-                LobbyCompatibility();
-            }
             InvokeRepeating(nameof(UpdatePlayerPositionCache), 0f, 1f);
             new HostFixesServerSendRpcs();
             Log.LogMessage($"{MyPluginInfo.PLUGIN_NAME} v{MyPluginInfo.PLUGIN_VERSION} is loaded!");
-        }
-
-        private void LobbyCompatibility()
-        {
-            PluginHelper.RegisterPlugin(MyPluginInfo.PLUGIN_GUID, System.Version.Parse(MyPluginInfo.PLUGIN_VERSION), CompatibilityLevel.ServerOnly, VersionStrictness.None);
         }
 
         private void UpdatePlayerPositionCache()
