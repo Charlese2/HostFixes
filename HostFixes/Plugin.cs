@@ -1758,7 +1758,7 @@ namespace HostFixes
                 PlayerControllerB instance,
                 __RpcParams RpcParams)
             {
-                ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
+                ulong senderClientId = RpcParams.Ext.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
                     Log.LogError($"[UpdatePlayerPositionRpc] Failed to get the playerId from senderClientId: {senderClientId}");
@@ -2201,7 +2201,7 @@ namespace HostFixes
 
             public void UpdateEnemyPositionRpc(Vector3 newPos, EnemyAI instance, __RpcParams RpcParams)
             {
-                ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
+                ulong senderClientId = RpcParams.Ext.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int _))
                 {
                     Log.LogError($"[UpdateEnemyPositionRpc] Failed to get the playerId from senderClientId: {senderClientId}");
@@ -2228,7 +2228,7 @@ namespace HostFixes
 
             public void ActivateItemRpc(bool onOff, bool buttonDown, GrabbableObject instance, __RpcParams RpcParams)
             {
-                ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
+                ulong senderClientId = RpcParams.Ext.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
                     Log.LogError($"[ActivateItemServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
@@ -3124,7 +3124,7 @@ namespace HostFixes
                 PlayerControllerB instance,
                 __RpcParams RpcParams)
             {
-                ulong senderClientId = RpcParams.Server.Receive.SenderClientId;
+                ulong senderClientId = RpcParams.Ext.Receive.SenderClientId;
                 if (!StartOfRound.Instance.ClientPlayerList.TryGetValue(senderClientId, out int senderPlayerId))
                 {
                     Log.LogError($"[DropAllHeldItemsServerRpc] Failed to get the playerId from senderClientId: {senderClientId}");
